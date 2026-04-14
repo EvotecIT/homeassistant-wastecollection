@@ -3,12 +3,14 @@ import inspect
 import json
 import logging
 import types
+from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal, Tuple, TypedDict, Union, cast, get_origin
 
 import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
+from homeassistant.components import websocket_api
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -16,8 +18,9 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.const import CONF_NAME, CONF_VALUE_TEMPLATE
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import section
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.selector import (
     DurationSelector,
     DurationSelectorConfig,
@@ -79,7 +82,9 @@ from .const import (
     DOMAIN,
 )
 from .init_ui import WCSCoordinator
-from .sensor import DetailsFormat
+from .sensor import DetailsFormat, render_sensor_preview
+from .sensor_form_helpers import apply_template_presets
+from .waste_collection_schedule import CollectionAggregator, Customize, SourceShell
 from .waste_collection_schedule.type_aliases import (
     get_customize_label,
     get_uncustomized_types,
@@ -150,6 +155,86 @@ def flatten_section_input(
         else:
             flattened[key] = value
     return flattened
+
+
+class PreviewSource:
+    """Tiny source wrapper used to build preview shells from cached collections."""
+
+    def __init__(self, collections: list[Collection]) -> None:
+        self._collections = collections
+
+    def fetch(self) -> list[Collection]:
+        return deepcopy(self._collections)
+
+
+def get_customize_objects(
+    customize_options: dict[str, dict[str, Any]] | None,
+) -> dict[str, Customize]:
+    """Convert stored customization dictionaries into runtime Customize objects."""
+    if not customize_options:
+        return {}
+
+    return {
+        waste_type: Customize(
+            waste_type=waste_type,
+            alias=customize.get(CONF_ALIAS),
+            show=customize.get(CONF_SHOW, True),
+            icon=customize.get(CONF_ICON),
+            picture=customize.get(CONF_PICTURE),
+            use_dedicated_calendar=customize.get(CONF_USE_DEDICATED_CALENDAR, False),
+            dedicated_calendar_title=customize.get(CONF_DEDICATED_CALENDAR_TITLE),
+        )
+        for waste_type, customize in customize_options.items()
+    }
+
+
+def normalize_sensor_user_input(sensor_input: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    """Apply preset handling and normalize enum values for sensor forms."""
+    args, errors = apply_template_presets(sensor_input)
+
+    if CONF_DETAILS_FORMAT in args and isinstance(args[CONF_DETAILS_FORMAT], str):
+        args[CONF_DETAILS_FORMAT] = DetailsFormat[args[CONF_DETAILS_FORMAT]]
+
+    return args, errors
+
+
+def get_preview_sensor_input(
+    hass: HomeAssistant, sensor_input: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Normalize sensor input and compile templates for preview rendering."""
+    args, errors = normalize_sensor_user_input(sensor_input)
+
+    for key in [CONF_VALUE_TEMPLATE, CONF_DATE_TEMPLATE]:
+        if key not in args or not args[key]:
+            continue
+        try:
+            args[key] = cv.template(args[key])
+            args[key].hass = hass
+        except vol.Invalid:
+            errors[key] = "invalid_template"
+
+    return args, errors
+
+
+def build_preview_shell(
+    collections: list[Collection],
+    customize_options: dict[str, dict[str, Any]] | None,
+    calendar_title: str | None,
+    day_offset: int,
+) -> SourceShell:
+    """Build a temporary shell for previewing sensors without refetching."""
+    shell = SourceShell(
+        source=PreviewSource(collections),
+        customize=get_customize_objects(customize_options),
+        title=calendar_title or "Waste Collection Schedule",
+        description="Preview",
+        url=None,
+        calendar_title=calendar_title,
+        unique_id="waste_collection_schedule_preview",
+        day_offset=day_offset,
+    )
+    shell.fetch()
+    return shell
 
 
 SUPPORTED_ARG_TYPES = {
@@ -280,6 +365,12 @@ def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
                     vol.Optional(
                         CONF_DATE_TEMPLATE,
                         default=defaults.get(CONF_DATE_TEMPLATE, UNDEFINED),
+                    ): TemplateSelector(),
+                    vol.Optional(
+                        CONF_DATE_TEMPLATE + "_preset",
+                        default=defaults.get(
+                            CONF_DATE_TEMPLATE + "_preset", UNDEFINED
+                        ),
                     ): SelectSelector(
                         SelectSelectorConfig(
                             options=[
@@ -287,16 +378,10 @@ def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
                                 for k, v in EXAMPLE_DATE_TEMPLATES.items()
                             ],
                             mode=SelectSelectorMode.DROPDOWN,
-                            custom_value=True,
+                            custom_value=False,
                             multiple=False,
                         )
                     ),
-                    vol.Optional(
-                        CONF_DATE_TEMPLATE + "_preset",
-                        default=defaults.get(
-                            CONF_DATE_TEMPLATE + "_preset", UNDEFINED
-                        ),
-                    ): TemplateSelector(),
                     vol.Optional(
                         CONF_ADD_DAYS_TO,
                         default=defaults.get(CONF_ADD_DAYS_TO, UNDEFINED),
@@ -361,20 +446,11 @@ def validate_sensor_user_input(
     Returns:
         Tuple[dict, dict]: errors, extracted args
     """
-    errors: dict[str, str] = {}
-    args = sensor_input.copy()
+    args, errors = normalize_sensor_user_input(sensor_input)
 
     # validate value_template and date_template against cv.template
     for key in [CONF_VALUE_TEMPLATE, CONF_DATE_TEMPLATE]:
-        if key + "_preset" in sensor_input and sensor_input[key + "_preset"]:
-            if key in sensor_input:
-                errors[key] = "preset_selected"
-                errors[key + "_preset"] = "preset_selected"
-                continue
-            args.pop(key + "_preset", None)
-            args[key] = sensor_input[key + "_preset"]
-
-        if key in sensor_input and key:
+        if key in args and args[key]:
             try:
                 cv.template(args[key])
             except vol.Invalid:
@@ -781,6 +857,7 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             resp: list[Collection] = await self.hass.async_add_executor_job(
                 instance.fetch
             )
+            self._preview_collections = deepcopy(resp)
 
             if len(resp) == 0:
                 errors["base"] = "fetch_empty"
@@ -1012,6 +1089,7 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             data_schema=get_sensor_schema(self._fetched_types),
             errors=errors,
             description_placeholders={"sensor_number": str(len(self.sensors) + 1)},
+            preview=DOMAIN,
         )
 
     async def finish(self) -> ConfigFlowResult:
@@ -1025,6 +1103,11 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
     @callback
     def async_get_options_flow(config_entry: ConfigEntry):
         return WasteCollectionOptionsFlow(config_entry)
+
+    @staticmethod
+    async def async_setup_preview(hass: HomeAssistant) -> None:
+        """Register websocket preview support for the sensor editor."""
+        websocket_api.async_register_command(hass, ws_start_preview)
 
     async def async_step_reconfigure(self, args_input: dict[str, Any] | None = None):
         await self._async_setup_sources()
@@ -1085,6 +1168,22 @@ class WasteCollectionOptionsFlow(OptionsFlow):
     async def translate(self, text: str) -> str:
         user_language = self.hass.config.language
         return await async_get_translations(self.hass, user_language, DOMAIN)(text)
+
+    async def async_get_preview_collections(self) -> list[Collection]:
+        """Load source collections once so preview can reuse real schedule data."""
+        if hasattr(self, "_preview_collections"):
+            return self._preview_collections
+
+        coordinator: WCSCoordinator | None = self.hass.data.get(DOMAIN, {}).get(
+            self._entry.entry_id
+        )
+        if coordinator is None:
+            raise HomeAssistantError("Preview is not available for this entry")
+
+        self._preview_collections = await self.hass.async_add_executor_job(
+            coordinator.shell._source.fetch
+        )
+        return self._preview_collections
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         # get SourceShells
@@ -1376,4 +1475,156 @@ class WasteCollectionOptionsFlow(OptionsFlow):
             description_placeholders={
                 "sensor_number": str(self._sensor_select_idx + 1),
             },
+            preview=DOMAIN,
         )
+
+
+def _get_preview_flow(
+    hass: HomeAssistant, flow_type: str, flow_id: str
+) -> WasteCollectionConfigFlow | WasteCollectionOptionsFlow:
+    """Return the live flow handler for preview generation."""
+    manager = (
+        hass.config_entries.flow
+        if flow_type == "config_flow"
+        else hass.config_entries.options
+    )
+
+    flow = manager._progress.get(flow_id)  # noqa: SLF001
+    if flow is None:
+        raise HomeAssistantError("Flow not found")
+    return cast(WasteCollectionConfigFlow | WasteCollectionOptionsFlow, flow)
+
+
+async def _build_preview_context(
+    hass: HomeAssistant,
+    flow: WasteCollectionConfigFlow | WasteCollectionOptionsFlow,
+    flow_type: str,
+) -> tuple[
+    list[Collection],
+    dict[str, dict[str, Any]],
+    str | None,
+    str,
+    datetime.time,
+    int,
+]:
+    """Collect the cached schedule data and display options needed for preview."""
+    if flow_type == "config_flow":
+        config_flow = cast(WasteCollectionConfigFlow, flow)
+        preview_collections = getattr(config_flow, "_preview_collections", None)
+        if preview_collections is None:
+            raise HomeAssistantError("Preview is not available until source data is loaded")
+
+        options = config_flow._options
+        return (
+            preview_collections,
+            options.get(CONF_CUSTOMIZE, {}),
+            options.get(CONF_SOURCE_CALENDAR_TITLE),
+            options.get(CONF_SEPARATOR, CONF_SEPARATOR_DEFAULT),
+            cv.time(options.get(CONF_DAY_SWITCH_TIME, CONF_DAY_SWITCH_TIME_DEFAULT)),
+            options.get(CONF_DAY_OFFSET, CONF_DAY_OFFSET_DEFAULT),
+        )
+
+    options_flow = cast(WasteCollectionOptionsFlow, flow)
+    preview_collections = await options_flow.async_get_preview_collections()
+    options = options_flow._options
+
+    return (
+        preview_collections,
+        options.get(CONF_CUSTOMIZE, {}),
+        options.get(CONF_SOURCE_CALENDAR_TITLE),
+        options.get(CONF_SEPARATOR, CONF_SEPARATOR_DEFAULT),
+        cv.time(options.get(CONF_DAY_SWITCH_TIME, CONF_DAY_SWITCH_TIME_DEFAULT)),
+        options.get(CONF_DAY_OFFSET, CONF_DAY_OFFSET_DEFAULT),
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "waste_collection_schedule/start_preview",
+        vol.Required("flow_id"): str,
+        vol.Required("flow_type"): vol.Any("config_flow", "options_flow"),
+        vol.Required("user_input"): dict,
+    }
+)
+@websocket_api.async_response
+async def ws_start_preview(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Generate a live preview for the sensor editor."""
+    flow = _get_preview_flow(hass, msg["flow_type"], msg["flow_id"])
+    raw_user_input = flatten_section_input(
+        msg["user_input"],
+        {
+            SECTION_SENSOR_IDENTITY,
+            SECTION_SENSOR_DISPLAY,
+            SECTION_SENSOR_FILTERING,
+            SECTION_SENSOR_MANAGEMENT,
+        },
+    )
+    if raw_user_input is None:
+        raise HomeAssistantError("Preview input is missing")
+
+    sensor_input, errors = get_preview_sensor_input(hass, raw_user_input)
+    if errors:
+        connection.send_message(
+            {
+                "id": msg["id"],
+                "type": websocket_api.TYPE_RESULT,
+                "success": False,
+                "error": {"code": "invalid_user_input", "message": errors},
+            }
+        )
+        return
+
+    (
+        preview_collections,
+        customize_options,
+        calendar_title,
+        separator,
+        day_switch_time,
+        day_offset,
+    ) = await _build_preview_context(hass, flow, msg["flow_type"])
+
+    preview_shell = build_preview_shell(
+        collections=preview_collections,
+        customize_options=customize_options,
+        calendar_title=calendar_title,
+        day_offset=day_offset,
+    )
+    preview_aggregator = CollectionAggregator([preview_shell])
+
+    try:
+        state, attributes, _, _ = render_sensor_preview(
+            aggregator=preview_aggregator,
+            separator=separator,
+            day_switch_time=day_switch_time,
+            details_format=sensor_input.get(CONF_DETAILS_FORMAT, DetailsFormat.upcoming),
+            count=sensor_input.get(CONF_COUNT),
+            leadtime=sensor_input.get(CONF_LEADTIME),
+            collection_types=sensor_input.get(CONF_COLLECTION_TYPES),
+            value_template=sensor_input.get(CONF_VALUE_TEMPLATE),
+            date_template=sensor_input.get(CONF_DATE_TEMPLATE),
+            add_days_to=sensor_input.get(CONF_ADD_DAYS_TO, False),
+            event_index=sensor_input.get(CONF_EVENT_INDEX),
+        )
+    except Exception as err:  # noqa: BLE001
+        connection.send_result(msg["id"])
+        connection.send_message(
+            websocket_api.event_message(
+                msg["id"],
+                {"error": str(err)},
+            )
+        )
+        connection.subscriptions[msg["id"]] = lambda: None
+        return
+
+    connection.send_result(msg["id"])
+    connection.send_message(
+        websocket_api.event_message(
+            msg["id"],
+            {"attributes": attributes, "state": state},
+        )
+    )
+    connection.subscriptions[msg["id"]] = lambda: None

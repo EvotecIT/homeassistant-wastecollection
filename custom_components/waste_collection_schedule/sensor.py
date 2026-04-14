@@ -2,6 +2,7 @@
 
 import datetime
 import logging
+from collections.abc import Mapping
 from enum import Enum
 from typing import Any
 
@@ -67,6 +68,89 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_EVENT_INDEX, default=0): cv.positive_int,
     }
 )
+
+
+def render_sensor_preview(
+    aggregator: CollectionAggregator,
+    separator: str,
+    day_switch_time: datetime.time,
+    details_format: DetailsFormat,
+    count: int | None,
+    leadtime: int | None,
+    collection_types: list[str] | None,
+    value_template: Template | None,
+    date_template: Template | None,
+    add_days_to: bool,
+    event_index: int | None,
+) -> tuple[Any, dict[str, Any], str, str | None]:
+    """Render the current sensor state and attributes for UI preview and entities."""
+    include_today = datetime.datetime.now().time() < day_switch_time
+
+    upcoming1 = aggregator.get_upcoming_group_by_day(
+        count=1,
+        include_types=collection_types,
+        include_today=include_today,
+        start_index=event_index,
+    )
+
+    if len(upcoming1) == 0:
+        return None, {}, "mdi:trash-can", None
+
+    collection = upcoming1[0]
+    if value_template is not None:
+        value = value_template.async_render_with_possible_json_value(collection, None)
+    else:
+        value = f"{separator.join(collection.types)} in {collection.daysTo} days"
+
+    def render_date(entry: Collection):
+        if date_template is not None:
+            return date_template.async_render_with_possible_json_value(entry, None)
+        return entry.date.isoformat()
+
+    attributes = {}
+    available_collection_types = (
+        sorted(aggregator.types) if collection_types is None else collection_types
+    )
+
+    if details_format == DetailsFormat.upcoming:
+        for upcoming_collection in aggregator.get_upcoming_group_by_day(
+            count=count,
+            leadtime=leadtime,
+            include_types=collection_types,
+            include_today=include_today,
+            start_index=event_index,
+        ):
+            attributes[render_date(upcoming_collection)] = separator.join(
+                upcoming_collection.types
+            )
+    elif details_format == DetailsFormat.appointment_types:
+        for waste_type in available_collection_types:
+            collections = aggregator.get_upcoming(
+                count=1,
+                include_types=[waste_type],
+                include_today=include_today,
+                start_index=event_index,
+            )
+            attributes[waste_type] = (
+                "" if len(collections) == 0 else render_date(collections[0])
+            )
+    elif details_format == DetailsFormat.generic:
+        attributes["types"] = available_collection_types
+        attributes["upcoming"] = aggregator.get_upcoming(
+            count=count,
+            leadtime=leadtime,
+            include_types=collection_types,
+            include_today=include_today,
+        )
+        refreshtime = ""
+        if aggregator.refreshtime is not None:
+            refreshtime = aggregator.refreshtime.isoformat(timespec="seconds")
+        attributes["last_update"] = refreshtime
+
+    if add_days_to:
+        attributes["daysTo"] = collection.daysTo
+
+    return value, attributes, collection.icon or "mdi:trash-can", collection.picture
 
 
 # Config flow setup
@@ -326,69 +410,26 @@ class ScheduleSensor(SensorEntity):
         """
         if self._aggregator is None:
             return None
-
-        upcoming1 = self._aggregator.get_upcoming_group_by_day(
-            count=1,
-            include_types=self._collection_types,
-            include_today=self._include_today,
-            start_index=self._event_index,
+        (
+            self._value,
+            self._attr_extra_state_attributes,
+            self._attr_icon,
+            self._attr_entity_picture,
+        ) = render_sensor_preview(
+            aggregator=self._aggregator,
+            separator=self._separator,
+            day_switch_time=self._api._day_switch_time
+            if self._api
+            else self._coordinator.day_switch_time,
+            details_format=self._details_format,
+            count=self._count,
+            leadtime=self._leadtime,
+            collection_types=self._collection_types,
+            value_template=self._value_template,
+            date_template=self._date_template,
+            add_days_to=self._add_days_to,
+            event_index=self._event_index,
         )
-
-        self._set_state(upcoming1)
-
-        attributes = {}
-
-        collection_types = (
-            sorted(self._aggregator.types)
-            if self._collection_types is None
-            else self._collection_types
-        )
-
-        if self._details_format == DetailsFormat.upcoming:
-            # show upcoming events list in details
-            upcoming = self._aggregator.get_upcoming_group_by_day(
-                count=self._count,
-                leadtime=self._leadtime,
-                include_types=self._collection_types,
-                include_today=self._include_today,
-                start_index=self._event_index,
-            )
-            for collection in upcoming:
-                attributes[self._render_date(collection)] = self._separator.join(
-                    collection.types
-                )
-        elif self._details_format == DetailsFormat.appointment_types:
-            # show list of collections in details
-            for t in collection_types:
-                collections = self._aggregator.get_upcoming(
-                    count=1,
-                    include_types=[t],
-                    include_today=self._include_today,
-                    start_index=self._event_index,
-                )
-                date = (
-                    "" if len(collections) == 0 else self._render_date(collections[0])
-                )
-                attributes[t] = date
-        elif self._details_format == DetailsFormat.generic:
-            # insert generic attributes into details
-            attributes["types"] = collection_types
-            attributes["upcoming"] = self._aggregator.get_upcoming(
-                count=self._count,
-                leadtime=self._leadtime,
-                include_types=self._collection_types,
-                include_today=self._include_today,
-            )
-            refreshtime = ""
-            if self._aggregator.refreshtime is not None:
-                refreshtime = self._aggregator.refreshtime.isoformat(timespec="seconds")
-            attributes["last_update"] = refreshtime
-
-        if len(upcoming1) > 0:
-            if self._add_days_to:
-                attributes["daysTo"] = upcoming1[0].daysTo
-
-        self._attr_extra_state_attributes = attributes
         self._add_refreshtime()
 
         if self.hass is not None:

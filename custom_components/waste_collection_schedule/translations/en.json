@@ -119,7 +119,7 @@
       },
       "sensor": {
         "title": "Create Sensor {sensor_number}",
-        "description": "Set up how this sensor should be named, displayed, and filtered.",
+        "description": "Set up how this sensor should be named, displayed, and filtered. Preview updates as you change display settings.",
         "sections": {
           "identity": {
             "name": "Rename",
@@ -139,7 +139,9 @@
             },
             "data_description": {
               "details_format": "Choose how extra collection details should appear in the more-info dialog.",
+              "value_template_preset": "Pick a ready-made state text format to start from. The preview updates with the result.",
               "value_template": "Optional Home Assistant template for the sensor state. Available values include 'value.date', 'value.daysTo', and 'value.types'.",
+              "date_template_preset": "Pick a ready-made date format to start from. The preview updates with the result.",
               "date_template": "Optional Home Assistant template for dates shown in more-info details, for example 'value.date.strftime(\"%d.%m.%Y\")'.",
               "add_days_to": "Add a 'daysTo' attribute with the number of days until the next pickup."
             }
@@ -24231,7 +24233,7 @@
       },
       "sensor": {
         "title": "Edit Sensor {sensor_number}",
-        "description": "Set up how this sensor should be named, displayed, and filtered.",
+        "description": "Set up how this sensor should be named, displayed, and filtered. Preview updates as you change display settings.",
         "sections": {
           "identity": {
             "name": "Rename",
@@ -24251,7 +24253,9 @@
             },
             "data_description": {
               "details_format": "Choose how extra collection details should appear in the more-info dialog.",
+              "value_template_preset": "Pick a ready-made state text format to start from. The preview updates with the result.",
               "value_template": "Optional Home Assistant template for the sensor state. Available values include 'value.date', 'value.daysTo', and 'value.types'.",
+              "date_template_preset": "Pick a ready-made date format to start from. The preview updates with the result.",
               "date_template": "Optional Home Assistant template for dates shown in more-info details, for example 'value.date.strftime(\"%d.%m.%Y\")'.",
               "add_days_to": "Add a 'daysTo' attribute with the number of days until the next pickup."
             }
