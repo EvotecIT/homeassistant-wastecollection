@@ -22,7 +22,7 @@ from .waste_collection_schedule import SourceShell, Customize  # type: ignore # 
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["calendar", "sensor"]
+PLATFORMS = ["calendar", "sensor", "select", "text"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

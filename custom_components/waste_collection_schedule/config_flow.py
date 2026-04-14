@@ -1089,7 +1089,6 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             data_schema=get_sensor_schema(self._fetched_types),
             errors=errors,
             description_placeholders={"sensor_number": str(len(self.sensors) + 1)},
-            preview=DOMAIN,
         )
 
     async def finish(self) -> ConfigFlowResult:
@@ -1475,7 +1474,6 @@ class WasteCollectionOptionsFlow(OptionsFlow):
             description_placeholders={
                 "sensor_number": str(self._sensor_select_idx + 1),
             },
-            preview=DOMAIN,
         )
 
 
