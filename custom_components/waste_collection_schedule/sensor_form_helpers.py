@@ -3,7 +3,9 @@
 from typing import Any
 
 try:
-    from .const import CONF_DATE_TEMPLATE, CONF_VALUE_TEMPLATE
+    from homeassistant.const import CONF_VALUE_TEMPLATE
+
+    from .const import CONF_DATE_TEMPLATE
 except ImportError:  # pragma: no cover - fallback for direct test imports
     from const import CONF_DATE_TEMPLATE
 

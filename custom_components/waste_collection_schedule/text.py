@@ -7,11 +7,11 @@ from typing import Any
 
 from homeassistant.components.text import TextEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME, EntityCategory
+from homeassistant.const import CONF_NAME, CONF_VALUE_TEMPLATE, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import CONF_DATE_TEMPLATE, CONF_SENSORS, CONF_VALUE_TEMPLATE, DOMAIN
+from .const import CONF_DATE_TEMPLATE, CONF_SENSORS, DOMAIN
 from .init_ui import WCSCoordinator
 from .sensor_config_helpers import build_updated_options
 
