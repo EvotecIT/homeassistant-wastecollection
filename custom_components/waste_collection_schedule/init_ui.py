@@ -10,13 +10,13 @@ import requests
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from .service import get_fetch_all_service
 from .waste_collection_schedule.service.DeviceKeyStore import (
     initialize_device_key_store,
 )
 from .wcs_coordinator import WCSCoordinator
-from .panel import async_register_editor_panel, async_remove_legacy_config_entities
 
 from . import const  # type: ignore # isort:skip # noqa: E402
 from .waste_collection_schedule import SourceShell, Customize  # type: ignore # isort:skip # noqa: E402
@@ -24,6 +24,16 @@ from .waste_collection_schedule import SourceShell, Customize  # type: ignore # 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["calendar", "sensor"]
+
+
+async def async_remove_legacy_config_entities(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Remove the abandoned per-sensor config entities from the registry."""
+    registry = er.async_get(hass)
+    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if entity_entry.unique_id and "_ui_sensor_config_" in entity_entry.unique_id:
+            registry.async_remove(entity_entry.entity_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -83,7 +93,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     hass.data.setdefault(const.DOMAIN, {})[entry.entry_id] = coordinator
     await async_remove_legacy_config_entities(hass, entry)
-    await async_register_editor_panel(hass)
 
     # Pre-import platforms in parallel to avoid blocking I/O in the event loop
     await asyncio.gather(

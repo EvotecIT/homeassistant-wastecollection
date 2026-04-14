@@ -33,7 +33,7 @@ def test_get_preset_option_returns_default_for_empty_template():
 def test_get_preset_option_returns_matching_label_for_known_template():
     assert (
         get_preset_option("in {{value.daysTo}} days", VALUE_TEMPLATE_PRESETS)
-        == "In .. days"
+        == "in 13 days"
     )
 
 

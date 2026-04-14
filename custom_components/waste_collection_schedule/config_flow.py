@@ -84,6 +84,11 @@ from .const import (
 from .init_ui import WCSCoordinator
 from .sensor import DetailsFormat, render_sensor_preview
 from .sensor_form_helpers import apply_template_presets
+from .sensor_template_presets import (
+    DATE_TEMPLATE_PRESETS,
+    VALUE_TEMPLATE_PRESETS,
+    get_preset_option,
+)
 from .waste_collection_schedule import CollectionAggregator, Customize, SourceShell
 from .waste_collection_schedule.type_aliases import (
     get_customize_label,
@@ -134,6 +139,7 @@ SECTION_SENSOR_DISPLAY = "display"
 SECTION_SENSOR_FILTERING = "filtering"
 SECTION_SENSOR_MANAGEMENT = "management"
 SECTION_CUSTOMIZE_MANAGEMENT = "management"
+CONF_ADVANCED_MODE = "advanced_mode"
 
 
 def _get_source_metadata(source: str) -> dict[str, Any]:
@@ -312,7 +318,127 @@ def get_customize_schema(defaults: dict[str, Any] = {}, add_delete: bool = False
     return vol.Schema(schema)
 
 
-def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
+def _sensor_defaults(defaults: dict[str, Any]) -> dict[str, Any]:
+    """Add derived UI defaults for sensor preset selectors."""
+    derived_defaults = defaults.copy()
+    derived_defaults[CONF_VALUE_TEMPLATE + "_preset"] = get_preset_option(
+        defaults.get(CONF_VALUE_TEMPLATE), VALUE_TEMPLATE_PRESETS
+    )
+    derived_defaults[CONF_DATE_TEMPLATE + "_preset"] = get_preset_option(
+        defaults.get(CONF_DATE_TEMPLATE), DATE_TEMPLATE_PRESETS
+    )
+    return derived_defaults
+
+
+def _show_advanced_sensor_fields(defaults: dict[str, Any]) -> bool:
+    """Return True when the advanced sensor editor should be expanded."""
+    if defaults.get(CONF_ADVANCED_MODE):
+        return True
+
+    for key in [
+        CONF_VALUE_TEMPLATE,
+        CONF_DATE_TEMPLATE,
+        CONF_COUNT,
+        CONF_LEADTIME,
+        CONF_EVENT_INDEX,
+        CONF_COLLECTION_TYPES,
+    ]:
+        if defaults.get(key) not in (None, "", [], False):
+            return True
+
+    return False
+
+
+def _should_refresh_sensor_form(
+    user_input: dict[str, Any], defaults: dict[str, Any] | None = None
+) -> bool:
+    """Return True when the user toggled advanced mode and the form should redraw."""
+    derived_defaults = _sensor_defaults(defaults or {})
+    current_show_advanced = _show_advanced_sensor_fields(derived_defaults)
+    requested_show_advanced = user_input.get(CONF_ADVANCED_MODE, current_show_advanced)
+    return bool(requested_show_advanced) != current_show_advanced
+
+
+def get_sensor_schema(
+    fetched_types, add_delete: bool = False, defaults: dict[str, Any] | None = None
+):
+    defaults = _sensor_defaults(defaults or {})
+    show_advanced = _show_advanced_sensor_fields(defaults)
+    display_fields: dict[Any, Any] = {
+        vol.Optional(
+            CONF_DETAILS_FORMAT,
+            default=defaults.get(CONF_DETAILS_FORMAT, "upcoming"),
+        ): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(
+                        label=k,
+                        value=k,
+                    )
+                    for k in DetailsFormat.__members__.keys()
+                ],
+                translation_key="details_format",
+            )
+        ),
+        vol.Optional(
+            CONF_VALUE_TEMPLATE + "_preset",
+            default=defaults.get(CONF_VALUE_TEMPLATE + "_preset", "Default"),
+        ): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(label="Use built-in default", value="Default"),
+                    *[
+                        SelectOptionDict(label=label, value=label)
+                        for label in VALUE_TEMPLATE_PRESETS
+                    ],
+                    SelectOptionDict(label="Write my own template", value="Custom"),
+                ],
+                mode=SelectSelectorMode.DROPDOWN,
+                custom_value=False,
+                multiple=False,
+            )
+        ),
+        vol.Optional(
+            CONF_DATE_TEMPLATE + "_preset",
+            default=defaults.get(CONF_DATE_TEMPLATE + "_preset", "Default"),
+        ): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(label="Use built-in default", value="Default"),
+                    *[
+                        SelectOptionDict(label=label, value=label)
+                        for label in DATE_TEMPLATE_PRESETS
+                    ],
+                    SelectOptionDict(label="Write my own template", value="Custom"),
+                ],
+                mode=SelectSelectorMode.DROPDOWN,
+                custom_value=False,
+                multiple=False,
+            )
+        ),
+        vol.Optional(
+            CONF_ADD_DAYS_TO,
+            default=defaults.get(CONF_ADD_DAYS_TO, UNDEFINED),
+        ): cv.boolean,
+        vol.Optional(
+            CONF_ADVANCED_MODE,
+            default=defaults.get(CONF_ADVANCED_MODE, show_advanced),
+        ): cv.boolean,
+    }
+    if show_advanced:
+        display_fields.update(
+            {
+                vol.Optional(
+                    CONF_VALUE_TEMPLATE,
+                    default=defaults.get(CONF_VALUE_TEMPLATE, UNDEFINED),
+                ): TemplateSelector(),
+                vol.Optional(
+                    CONF_DATE_TEMPLATE,
+                    default=defaults.get(CONF_DATE_TEMPLATE, UNDEFINED),
+                ): TemplateSelector(),
+            }
+        )
+
     schema = {
         vol.Required(SECTION_SENSOR_IDENTITY): section(
             vol.Schema(
@@ -325,72 +451,13 @@ def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
             {"collapsed": False},
         ),
         vol.Required(SECTION_SENSOR_DISPLAY): section(
-            vol.Schema(
-                {
-                    vol.Optional(
-                        CONF_DETAILS_FORMAT,
-                        default=defaults.get(CONF_DETAILS_FORMAT, "upcoming"),
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(
-                                    label=k,
-                                    value=k,
-                                )
-                                for k in DetailsFormat.__members__.keys()
-                            ],
-                            translation_key="details_format",
-                        )
-                    ),
-                    vol.Optional(
-                        CONF_VALUE_TEMPLATE + "_preset",
-                        default=defaults.get(
-                            CONF_VALUE_TEMPLATE + "_preset", UNDEFINED
-                        ),
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(label=f"{k}: {v}", value=v)
-                                for k, v in EXAMPLE_VALUE_TEMPLATES.items()
-                            ],
-                            mode=SelectSelectorMode.DROPDOWN,
-                            custom_value=False,
-                            multiple=False,
-                        )
-                    ),
-                    vol.Optional(
-                        CONF_VALUE_TEMPLATE,
-                        default=defaults.get(CONF_VALUE_TEMPLATE, UNDEFINED),
-                    ): TemplateSelector(),
-                    vol.Optional(
-                        CONF_DATE_TEMPLATE,
-                        default=defaults.get(CONF_DATE_TEMPLATE, UNDEFINED),
-                    ): TemplateSelector(),
-                    vol.Optional(
-                        CONF_DATE_TEMPLATE + "_preset",
-                        default=defaults.get(
-                            CONF_DATE_TEMPLATE + "_preset", UNDEFINED
-                        ),
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(label=f"{k}: {v}", value=v)
-                                for k, v in EXAMPLE_DATE_TEMPLATES.items()
-                            ],
-                            mode=SelectSelectorMode.DROPDOWN,
-                            custom_value=False,
-                            multiple=False,
-                        )
-                    ),
-                    vol.Optional(
-                        CONF_ADD_DAYS_TO,
-                        default=defaults.get(CONF_ADD_DAYS_TO, UNDEFINED),
-                    ): cv.boolean,
-                }
-            ),
+            vol.Schema(display_fields),
             {"collapsed": False},
         ),
-        vol.Required(SECTION_SENSOR_FILTERING): section(
+    }
+
+    if show_advanced:
+        schema[vol.Required(SECTION_SENSOR_FILTERING)] = section(
             vol.Schema(
                 {
                     vol.Optional(
@@ -417,8 +484,7 @@ def get_sensor_schema(fetched_types, add_delete=False, defaults: dict = {}):
                 }
             ),
             {"collapsed": True},
-        ),
-    }
+        )
     management_schema = {}
     if add_delete:
         management_schema[vol.Optional("delete")] = cv.boolean
@@ -447,6 +513,10 @@ def validate_sensor_user_input(
         Tuple[dict, dict]: errors, extracted args
     """
     args, errors = normalize_sensor_user_input(sensor_input)
+    args.pop(CONF_ADVANCED_MODE, None)
+    for key in [CONF_VALUE_TEMPLATE, CONF_DATE_TEMPLATE]:
+        if args.get(key) == "":
+            args.pop(key, None)
 
     # validate value_template and date_template against cv.template
     for key in [CONF_VALUE_TEMPLATE, CONF_DATE_TEMPLATE]:
@@ -470,28 +540,6 @@ def validate_sensor_user_input(
         errors[CONF_NAME] = "name_exists"
 
     return args, errors if args.get("skip", False) is False else {}
-
-
-EXAMPLE_VALUE_TEMPLATES = {
-    "": "",
-    "in .. days": "in {{value.daysTo}} days",
-    ".. in .. days": '{{value.types|join(", ")}} in {{value.daysTo}} days',
-    "numeric daysTo": "{{value.daysTo}}",
-    "in .. days / Tomorrow / Today": "{% if value.daysTo == 0 %}Today{% elif value.daysTo == 1 %}Tomorrow{% else %}in {{value.daysTo}} days{% endif %}",
-    "on Weekday, dd.mm.yyyy": 'on {{value.date.strftime("%a")}}, {{value.date.strftime("%d.%m.%Y")}}',
-    "on Weekday, yyyy-mm-dd": 'on {{value.date.strftime("%a")}}, {{value.date.strftime("%Y-%m-%d")}}',
-    "next collections": '{{value.types|join(", ")}}',
-}
-
-EXAMPLE_DATE_TEMPLATES = {
-    "": "",
-    "20.03.2020": '{{value.date.strftime("%d.%m.%Y")}}',
-    "Fri, 20.03.2020": '{{value.date.strftime("%a, %d.%m.%Y")}}',
-    "03/20/2020": '{{value.date.strftime("%m/%d/%Y")}}',
-    "Fri, 03/20/2020": '{{value.date.strftime("%a, %m/%d/%Y")}}',
-    "2020-03-20": '{{value.date.strftime("%Y-%m-%d")}}',
-    "Fri, 2020-03-20": '{{value.date.strftime("%a, %Y-%m-%d")}}',
-}
 
 
 class SourceDict(TypedDict):
@@ -1066,6 +1114,7 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
         if not hasattr(self, "sensors"):
             self.sensors: list[dict[str, Any]] = []
         errors: dict[str, str] = {}
+        schema_defaults = sensor_input or {}
         if sensor_input is not None:
             sensor_input = flatten_section_input(
                 sensor_input,
@@ -1076,6 +1125,19 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     SECTION_SENSOR_MANAGEMENT,
                 },
             )
+            schema_defaults = sensor_input or {}
+            if sensor_input and _should_refresh_sensor_form(sensor_input):
+                return self.async_show_form(
+                    step_id="sensor",
+                    data_schema=self.add_suggested_values_to_schema(
+                        get_sensor_schema(self._fetched_types, defaults=sensor_input),
+                        sensor_input,
+                    ),
+                    errors=errors,
+                    description_placeholders={
+                        "sensor_number": str(len(self.sensors) + 1)
+                    },
+                )
             args, errors = validate_sensor_user_input(sensor_input, self.sensors)
             if len(errors) == 0 or args.get("skip", False) is True:
                 if args.get("skip", False) is False:
@@ -1086,7 +1148,10 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
 
         return self.async_show_form(
             step_id="sensor",
-            data_schema=get_sensor_schema(self._fetched_types),
+            data_schema=self.add_suggested_values_to_schema(
+                get_sensor_schema(self._fetched_types, defaults=schema_defaults),
+                sensor_input or {},
+            ),
             errors=errors,
             description_placeholders={"sensor_number": str(len(self.sensors) + 1)},
         )
@@ -1451,6 +1516,24 @@ class WasteCollectionOptionsFlow(OptionsFlow):
                     SECTION_SENSOR_MANAGEMENT,
                 },
             )
+            if user_input and _should_refresh_sensor_form(
+                user_input, defaults=original_sensor or {}
+            ):
+                return self.async_show_form(
+                    step_id="sensor",
+                    errors=errors,
+                    data_schema=self.add_suggested_values_to_schema(
+                        get_sensor_schema(
+                            self.get_types_of_sensors_and_customizations(),
+                            add_delete=True,
+                            defaults={**(original_sensor or {}), **user_input},
+                        ),
+                        user_input,
+                    ),
+                    description_placeholders={
+                        "sensor_number": str(self._sensor_select_idx + 1),
+                    },
+                )
             if user_input.get(
                 "delete", False
             ):  # only re-add the (modified) sensor if not deleted

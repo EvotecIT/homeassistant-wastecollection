@@ -27,8 +27,8 @@ CONF_VALUE_TEMPLATE = "value_template"
 def test_apply_template_presets_moves_selected_presets_into_templates():
     args, errors = apply_template_presets(
         {
-            CONF_VALUE_TEMPLATE + "_preset": "in {{value.daysTo}} days",
-            CONF_DATE_TEMPLATE + "_preset": '{{value.date.strftime("%d.%m.%Y")}}',
+            CONF_VALUE_TEMPLATE + "_preset": "in 13 days",
+            CONF_DATE_TEMPLATE + "_preset": "14.04.2026",
         }
     )
 
@@ -43,7 +43,7 @@ def test_apply_template_presets_rejects_preset_and_custom_value_together():
     _, errors = apply_template_presets(
         {
             CONF_VALUE_TEMPLATE: "{{value.daysTo}}",
-            CONF_VALUE_TEMPLATE + "_preset": "in {{value.daysTo}} days",
+            CONF_VALUE_TEMPLATE + "_preset": "in 13 days",
         }
     )
 
