@@ -16,13 +16,14 @@ from .waste_collection_schedule.service.DeviceKeyStore import (
     initialize_device_key_store,
 )
 from .wcs_coordinator import WCSCoordinator
+from .panel import async_register_editor_panel, async_remove_legacy_config_entities
 
 from . import const  # type: ignore # isort:skip # noqa: E402
 from .waste_collection_schedule import SourceShell, Customize  # type: ignore # isort:skip # noqa: E402
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["calendar", "sensor", "select", "text"]
+PLATFORMS = ["calendar", "sensor"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -81,6 +82,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(const.DOMAIN, {})[entry.entry_id] = coordinator
+    await async_remove_legacy_config_entities(hass, entry)
+    await async_register_editor_panel(hass)
 
     # Pre-import platforms in parallel to avoid blocking I/O in the event loop
     await asyncio.gather(

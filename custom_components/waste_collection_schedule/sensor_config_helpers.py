@@ -39,6 +39,23 @@ def update_sensor_config_list(
     raise KeyError(f"Sensor '{sensor_name}' not found")
 
 
+def replace_sensor_config(
+    sensors: list[dict[str, Any]],
+    original_sensor_name: str,
+    replacement: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return a new sensor list with one sensor fully replaced by name."""
+    updated_sensors = deepcopy(sensors)
+    for idx, sensor in enumerate(updated_sensors):
+        if sensor.get(CONF_NAME) != original_sensor_name:
+            continue
+
+        updated_sensors[idx] = deepcopy(replacement)
+        return updated_sensors
+
+    raise KeyError(f"Sensor '{original_sensor_name}' not found")
+
+
 def build_updated_options(
     entry: ConfigEntry,
     sensor_name: str,
@@ -52,5 +69,20 @@ def build_updated_options(
         sensor_name=sensor_name,
         updates=updates,
         removals=removals,
+    )
+    return options
+
+
+def build_replaced_sensor_options(
+    entry: ConfigEntry,
+    original_sensor_name: str,
+    replacement: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a new config entry options payload with one sensor fully replaced."""
+    options = deepcopy(dict(entry.options))
+    options[CONF_SENSORS] = replace_sensor_config(
+        options.get(CONF_SENSORS, []),
+        original_sensor_name=original_sensor_name,
+        replacement=replacement,
     )
     return options

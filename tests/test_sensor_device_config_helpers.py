@@ -14,7 +14,7 @@ sys.path.insert(
     ),
 )
 
-from sensor_config_helpers import update_sensor_config_list  # noqa: E402
+from sensor_config_helpers import replace_sensor_config, update_sensor_config_list  # noqa: E402
 from sensor_template_presets import (  # noqa: E402
     CUSTOM_OPTION,
     DEFAULT_OPTION,
@@ -68,3 +68,21 @@ def test_update_sensor_config_list_can_remove_keys():
     )
 
     assert CONF_VALUE_TEMPLATE not in updated[0]
+
+
+def test_replace_sensor_config_replaces_only_target_sensor():
+    sensors = [
+        {CONF_NAME: "Bio", CONF_VALUE_TEMPLATE: "old"},
+        {CONF_NAME: "Paper"},
+    ]
+
+    updated = replace_sensor_config(
+        sensors,
+        original_sensor_name="Bio",
+        replacement={CONF_NAME: "Bio Friendly", CONF_VALUE_TEMPLATE: "new"},
+    )
+
+    assert updated[0][CONF_NAME] == "Bio Friendly"
+    assert updated[0][CONF_VALUE_TEMPLATE] == "new"
+    assert updated[1][CONF_NAME] == "Paper"
+    assert sensors[0][CONF_NAME] == "Bio"
