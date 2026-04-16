@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_VALUE_TEMPLATE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.template import Template
 
 # fmt: off
@@ -28,6 +29,7 @@ from .const import (
     CONF_DETAILS_FORMAT,
     CONF_EVENT_INDEX,
     CONF_LEADTIME,
+    CONF_SENSOR_ID,
     CONF_SENSORS,
     CONF_SOURCE_INDEX,
     DOMAIN,
@@ -187,6 +189,7 @@ async def async_setup_entry(hass, config: ConfigEntry, async_add_entities):
                 api=None,
                 coordinator=coordinator,
                 name=sensor.get(CONF_NAME, coordinator.shell.calendar_title),
+                sensor_id=sensor.get(CONF_SENSOR_ID),
                 aggregator=aggregator,
                 details_format=details_format,
                 count=sensor.get(CONF_COUNT),
@@ -271,6 +274,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             api=api,
             coordinator=None,
             name=sensor_config[CONF_NAME],
+            sensor_id=sensor_config.get(CONF_SENSOR_ID),
             aggregator=aggregator,
             details_format=details_format,
             count=sensor_config.get(CONF_COUNT),
@@ -295,6 +299,7 @@ class ScheduleSensor(SensorEntity):
         api: WasteCollectionApi | None,
         coordinator: WCSCoordinator | None,
         name: str,
+        sensor_id: str | None,
         aggregator: CollectionAggregator,
         details_format: DetailsFormat,
         count: int | None,
@@ -317,6 +322,7 @@ class ScheduleSensor(SensorEntity):
         self._date_template = date_template
         self._add_days_to = add_days_to
         self._event_index = event_index
+        self._sensor_id = sensor_id
 
         self._value: Any = None
 
@@ -325,7 +331,16 @@ class ScheduleSensor(SensorEntity):
         if self._coordinator:
             shell = self._coordinator.shell
             self._attr_unique_id = f"{shell.unique_id}_ui_sensor_{name}"
-            self._attr_device_info = self._coordinator.device_info
+            if sensor_id:
+                self._attr_device_info = DeviceInfo(
+                    identifiers={(DOMAIN, f"{shell.unique_id}_sensor_{sensor_id}")},
+                    manufacturer=shell.title,
+                    model="Waste Pickup Sensor",
+                    name=name,
+                    via_device=(DOMAIN, shell.unique_id),
+                )
+            else:
+                self._attr_device_info = self._coordinator.device_info
         else:
             self._attr_unique_id = name
         self._attr_should_poll = False

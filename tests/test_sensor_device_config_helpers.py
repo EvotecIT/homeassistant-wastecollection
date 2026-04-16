@@ -14,7 +14,11 @@ sys.path.insert(
     ),
 )
 
-from sensor_config_helpers import replace_sensor_config, update_sensor_config_list  # noqa: E402
+from sensor_config_helpers import (  # noqa: E402
+    ensure_sensor_ids,
+    replace_sensor_config,
+    update_sensor_config_list,
+)
 from sensor_template_presets import (  # noqa: E402
     CUSTOM_OPTION,
     DEFAULT_OPTION,
@@ -23,6 +27,7 @@ from sensor_template_presets import (  # noqa: E402
 )
 
 CONF_NAME = "name"
+CONF_SENSOR_ID = "sensor_id"
 CONF_VALUE_TEMPLATE = "value_template"
 
 
@@ -86,3 +91,18 @@ def test_replace_sensor_config_replaces_only_target_sensor():
     assert updated[0][CONF_VALUE_TEMPLATE] == "new"
     assert updated[1][CONF_NAME] == "Paper"
     assert sensors[0][CONF_NAME] == "Bio"
+
+
+def test_ensure_sensor_ids_only_fills_missing_ids():
+    sensors = [
+        {CONF_NAME: "Bio"},
+        {CONF_NAME: "Paper", CONF_SENSOR_ID: "keep-me"},
+    ]
+
+    values = iter(["generated-id"])
+    updated, changed = ensure_sensor_ids(sensors, id_factory=lambda: next(values))
+
+    assert changed is True
+    assert updated[0][CONF_SENSOR_ID] == "generated-id"
+    assert updated[1][CONF_SENSOR_ID] == "keep-me"
+    assert CONF_SENSOR_ID not in sensors[0]

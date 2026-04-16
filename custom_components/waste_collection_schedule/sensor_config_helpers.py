@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 try:
-    from .const import CONF_SENSORS
+    from .const import CONF_SENSOR_ID, CONF_SENSORS
 except ImportError:  # pragma: no cover - fallback for direct test imports
-    from const import CONF_SENSORS
+    from const import CONF_SENSOR_ID, CONF_SENSORS
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -37,6 +39,24 @@ def update_sensor_config_list(
         return updated_sensors
 
     raise KeyError(f"Sensor '{sensor_name}' not found")
+
+
+def ensure_sensor_ids(
+    sensors: list[dict[str, Any]],
+    id_factory: Callable[[], str] | None = None,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Return sensors with stable IDs ensured for every configured sensor."""
+    updated_sensors = deepcopy(sensors)
+    changed = False
+    factory = id_factory or (lambda: uuid4().hex)
+
+    for sensor in updated_sensors:
+        if sensor.get(CONF_SENSOR_ID):
+            continue
+        sensor[CONF_SENSOR_ID] = factory()
+        changed = True
+
+    return updated_sensors, changed
 
 
 def replace_sensor_config(

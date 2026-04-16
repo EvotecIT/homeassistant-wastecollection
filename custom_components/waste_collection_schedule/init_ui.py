@@ -13,6 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .service import get_fetch_all_service
+from .sensor_config_helpers import ensure_sensor_ids
 from .waste_collection_schedule.service.DeviceKeyStore import (
     initialize_device_key_store,
 )
@@ -38,7 +39,14 @@ async def async_remove_legacy_config_entities(
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up component from a config entry, entry contains data from config entry database."""
-    options = entry.options
+    options = dict(entry.options)
+    sensors_with_ids, sensor_ids_changed = ensure_sensor_ids(
+        options.get(const.CONF_SENSORS, [])
+    )
+    if sensor_ids_changed:
+        options[const.CONF_SENSORS] = sensors_with_ids
+        hass.config_entries.async_update_entry(entry, options=options)
+
     _LOGGER.debug(
         "Setting up entry %s, with data %s and options %s",
         entry.entry_id,

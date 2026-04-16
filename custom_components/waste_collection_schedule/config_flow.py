@@ -3,6 +3,7 @@ import inspect
 import json
 import logging
 import types
+import uuid
 from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
@@ -71,6 +72,7 @@ from .const import (
     CONF_SENSORS,
     CONF_SEPARATOR,
     CONF_SEPARATOR_DEFAULT,
+    CONF_SENSOR_ID,
     CONF_SHOW,
     CONF_SOURCE_ARGS,
     CONF_SOURCE_CALENDAR_TITLE,
@@ -1141,6 +1143,7 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
             args, errors = validate_sensor_user_input(sensor_input, self.sensors)
             if len(errors) == 0 or args.get("skip", False) is True:
                 if args.get("skip", False) is False:
+                    args.setdefault(CONF_SENSOR_ID, uuid.uuid4().hex)
                     self.sensors.append(args)
                 if args.get("additional", False) is False:
                     self._options.update({CONF_SENSORS: self.sensors})
@@ -1546,6 +1549,11 @@ class WasteCollectionOptionsFlow(OptionsFlow):
             )
 
             if len(errors) == 0:
+                args[CONF_SENSOR_ID] = (
+                    original_sensor.get(CONF_SENSOR_ID, uuid.uuid4().hex)
+                    if original_sensor
+                    else uuid.uuid4().hex
+                )
                 self._options[CONF_SENSORS].append(args)
                 self._sensor_select_idx += 1
                 return await self.async_step_sensor()
