@@ -40,10 +40,12 @@
           "sensors": {
             "name": "Detected Waste Types",
             "data": {
-              "create_sensors_for_types": "Create sensors for"
+              "create_sensors_for_types": "Create sensors for",
+              "create_combined_sensor": "Create combined next pickup sensor"
             },
             "data_description": {
-              "create_sensors_for_types": "Each selected waste type gets its own Home Assistant device and sensor."
+              "create_sensors_for_types": "Each selected waste type gets its own Home Assistant device and sensor.",
+              "create_combined_sensor": "Adds one sensor that watches all waste types and displays same-day pickups together, for example \"Bio, Śmieci in 10 days\"."
             }
           },
           "advanced": {
@@ -60,6 +62,7 @@
         },
         "data": {
           "create_sensors_for_types": "Create sensors for",
+          "create_combined_sensor": "Create combined next pickup sensor",
           "customize_collection_types": "Rename, hide, or restyle collection types now",
           "open_advanced_sensor_editor": "Open the legacy advanced sensor editor after this"
         }

@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
 
 CONF_NAME = "name"
+COMBINED_SENSOR_NAME = "Next waste pickup"
 
 
 def build_legacy_ui_sensor_unique_id(shell_unique_id: str, sensor_name: str) -> str:
@@ -193,6 +194,11 @@ def configured_collection_types(sensors: list[dict[str, Any]]) -> set[str]:
     return types
 
 
+def has_combined_sensor(sensors: list[dict[str, Any]]) -> bool:
+    """Return True when an all-types/combined waste sensor is configured."""
+    return any(not sensor.get("types") for sensor in sensors)
+
+
 def missing_collection_types(
     available_types: set[str], sensors: list[dict[str, Any]]
 ) -> list[str]:
@@ -210,6 +216,17 @@ def build_sensor_for_collection_type(
         CONF_NAME: collection_type,
         CONF_SENSOR_ID: factory(),
         "types": [collection_type],
+    }
+
+
+def build_combined_waste_sensor(
+    id_factory: Callable[[], str] | None = None,
+) -> dict[str, Any]:
+    """Build a default all-types sensor that groups same-day pickups together."""
+    factory = id_factory or (lambda: uuid4().hex)
+    return {
+        CONF_NAME: COMBINED_SENSOR_NAME,
+        CONF_SENSOR_ID: factory(),
     }
 
 
@@ -297,5 +314,17 @@ def build_added_collection_type_sensor_options(
     options = deepcopy(dict(entry.options))
     sensors = deepcopy(options.get(CONF_SENSORS, []))
     sensors.append(build_sensor_for_collection_type(collection_type, id_factory))
+    options[CONF_SENSORS] = sensors
+    return options
+
+
+def build_added_combined_sensor_options(
+    entry: ConfigEntry,
+    id_factory: Callable[[], str] | None = None,
+) -> dict[str, Any]:
+    """Build a new config entry options payload with one combined sensor added."""
+    options = deepcopy(dict(entry.options))
+    sensors = deepcopy(options.get(CONF_SENSORS, []))
+    sensors.append(build_combined_waste_sensor(id_factory))
     options[CONF_SENSORS] = sensors
     return options

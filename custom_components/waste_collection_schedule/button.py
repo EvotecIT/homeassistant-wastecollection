@@ -11,10 +11,12 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
 from .sensor_config_helpers import (
+    build_added_combined_sensor_options,
     build_added_collection_type_sensor_options,
     build_remove_ui_sensor_action_unique_id,
     build_removed_sensor_options,
     build_ui_sensor_device_identifier,
+    has_combined_sensor,
     missing_collection_types,
 )
 from .wcs_coordinator import WCSCoordinator
@@ -30,6 +32,9 @@ async def async_setup_entry(
     sensors = entry.options.get(CONF_SENSORS, [])
     entities: list[ButtonEntity] = []
 
+    if not has_combined_sensor(sensors):
+        entities.append(CreateCombinedWasteSensorButton(entry, coordinator))
+
     for collection_type in missing_collection_types(coordinator._aggregator.types, sensors):
         entities.append(CreateWasteSensorButton(entry, coordinator, collection_type))
 
@@ -42,6 +47,34 @@ async def async_setup_entry(
         entities.append(RemoveWasteSensorButton(entry, coordinator, sensor_id, sensor_name))
 
     async_add_entities(entities)
+
+
+class CreateCombinedWasteSensorButton(ButtonEntity):
+    """Button that creates one all-types waste pickup sensor."""
+
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.CONFIG
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:trash-can"
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: WCSCoordinator,
+    ) -> None:
+        self._entry = entry
+        self._attr_name = "Create combined next pickup sensor"
+        self._attr_unique_id = (
+            f"{coordinator.shell.unique_id}_ui_sensor_action_create_combined"
+        )
+        self._attr_device_info = coordinator.device_info
+
+    async def async_press(self) -> None:
+        """Create the combined waste sensor and let the config entry reload."""
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            options=build_added_combined_sensor_options(self._entry),
+        )
 
 
 class CreateWasteSensorButton(ButtonEntity):

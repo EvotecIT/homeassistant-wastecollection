@@ -49,6 +49,29 @@ def test_aggregator_matches_aliased_entries_with_raw_filter_type():
     assert upcoming[0].type == alias
 
 
+def test_aggregator_groups_same_day_entries_for_combined_sensor():
+    pickup_date = datetime.date.today() + datetime.timedelta(days=10)
+    shell = DummyShell(
+        entries=[
+            Collection(pickup_date, "Bio"),
+            Collection(pickup_date, "Śmieci"),
+            Collection(pickup_date + datetime.timedelta(days=2), "Segregowane"),
+        ],
+        customize={},
+    )
+
+    aggregator = CollectionAggregator([shell])
+
+    upcoming = aggregator.get_upcoming_group_by_day(
+        count=1,
+        include_types=None,
+        include_today=True,
+    )
+
+    assert len(upcoming) == 1
+    assert upcoming[0].types == ["Bio", "Śmieci"]
+
+
 def test_uncustomized_types_do_not_repeat_aliases_of_existing_customizations():
     customize = {
         "BIO (bags not required)": {"alias": "Bio"},

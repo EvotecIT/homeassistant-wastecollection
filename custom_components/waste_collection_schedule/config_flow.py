@@ -86,7 +86,10 @@ from .const import (
 from .init_ui import WCSCoordinator
 from .sensor import DetailsFormat, render_sensor_preview
 from .sensor_form_helpers import apply_template_presets
-from .sensor_config_helpers import build_sensor_for_collection_type
+from .sensor_config_helpers import (
+    build_combined_waste_sensor,
+    build_sensor_for_collection_type,
+)
 from .sensor_template_presets import (
     DATE_TEMPLATE_PRESETS,
     VALUE_TEMPLATE_PRESETS,
@@ -145,6 +148,7 @@ SECTION_CUSTOMIZE_MANAGEMENT = "management"
 SECTION_ONBOARDING_SENSORS = "sensors"
 SECTION_ONBOARDING_ADVANCED = "advanced"
 CONF_ADVANCED_MODE = "advanced_mode"
+CONF_CREATE_COMBINED_SENSOR = "create_combined_sensor"
 CONF_CREATE_SENSORS_FOR_TYPES = "create_sensors_for_types"
 CONF_CUSTOMIZE_COLLECTION_TYPES = "customize_collection_types"
 CONF_OPEN_ADVANCED_SENSOR_EDITOR = "open_advanced_sensor_editor"
@@ -386,6 +390,10 @@ def get_detected_types_schema(fetched_types: list[str]) -> vol.Schema:
                                 multiple=True,
                             )
                         ),
+                        vol.Optional(
+                            CONF_CREATE_COMBINED_SENSOR,
+                            default=True,
+                        ): cv.boolean,
                     }
                 ),
                 {"collapsed": False},
@@ -1070,6 +1078,8 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
                 build_sensor_for_collection_type(collection_type)
                 for collection_type in selected_types
             ]
+            if user_input.get(CONF_CREATE_COMBINED_SENSOR, True):
+                self.sensors.append(build_combined_waste_sensor())
             self._options[CONF_SENSORS] = self.sensors
             self._show_customize_config = user_input.get(
                 CONF_CUSTOMIZE_COLLECTION_TYPES, False

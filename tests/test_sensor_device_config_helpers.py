@@ -15,7 +15,10 @@ sys.path.insert(
 )
 
 from sensor_config_helpers import (  # noqa: E402
+    COMBINED_SENSOR_NAME,
+    build_added_combined_sensor_options,
     build_added_collection_type_sensor_options,
+    build_combined_waste_sensor,
     build_legacy_ui_sensor_unique_id,
     build_remove_ui_sensor_action_unique_id,
     build_removed_sensor_options,
@@ -27,6 +30,7 @@ from sensor_config_helpers import (  # noqa: E402
     configured_sensor_ids,
     configured_collection_types,
     ensure_sensor_ids,
+    has_combined_sensor,
     iter_ui_sensor_unique_id_migrations,
     missing_collection_types,
     parse_stable_ui_sensor_id,
@@ -175,6 +179,21 @@ def test_build_sensor_for_collection_type_creates_default_per_type_sensor():
     }
 
 
+def test_has_combined_sensor_detects_sensor_without_type_filter():
+    assert has_combined_sensor([{CONF_NAME: "Everything"}]) is True
+    assert has_combined_sensor([{CONF_NAME: "Bio", "types": ["Bio"]}]) is False
+
+
+def test_build_combined_waste_sensor_creates_all_type_sensor():
+    sensor = build_combined_waste_sensor(id_factory=lambda: "combined-id")
+
+    assert sensor == {
+        CONF_NAME: COMBINED_SENSOR_NAME,
+        CONF_SENSOR_ID: "combined-id",
+    }
+    assert "types" not in sensor
+
+
 def test_build_removed_sensor_options_removes_sensor_from_entry_options():
     class Entry:
         options = {
@@ -200,6 +219,20 @@ def test_build_added_collection_type_sensor_options_appends_new_sensor():
     assert options["sensors"] == [
         {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
         {CONF_NAME: "Paper", CONF_SENSOR_ID: "paper-id", "types": ["Paper"]},
+    ]
+
+
+def test_build_added_combined_sensor_options_appends_new_sensor():
+    class Entry:
+        options = {"sensors": [{CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"}]}
+
+    options = build_added_combined_sensor_options(
+        Entry(), id_factory=lambda: "combined-id"
+    )
+
+    assert options["sensors"] == [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
+        {CONF_NAME: COMBINED_SENSOR_NAME, CONF_SENSOR_ID: "combined-id"},
     ]
 
 
