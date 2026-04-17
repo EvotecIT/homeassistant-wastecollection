@@ -91,3 +91,27 @@ def test_render_sensor_preview_respects_hidden_details_for_structured_attributes
 
     assert "next_pickup" not in attributes
     assert "upcoming_pickups" not in attributes
+
+
+def test_render_sensor_preview_localizes_default_state_text():
+    pickup_date = datetime.date.today() + datetime.timedelta(days=1)
+    aggregator = CollectionAggregator(
+        [DummyShell([Collection(pickup_date, "Bio", icon="mdi:leaf")])]
+    )
+
+    state, _, _, _ = render_sensor_preview(
+        aggregator=aggregator,
+        separator=", ",
+        day_switch_time=datetime.time(23, 59),
+        details_format=DetailsFormat.upcoming,
+        count=None,
+        leadtime=None,
+        collection_types=None,
+        value_template=None,
+        date_template=None,
+        add_days_to=False,
+        event_index=0,
+        preset_language="pl",
+    )
+
+    assert state == "Bio jutro"

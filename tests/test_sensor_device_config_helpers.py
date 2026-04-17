@@ -63,6 +63,16 @@ def test_get_preset_option_returns_matching_label_for_polish_template():
     )
 
 
+def test_grouped_value_template_presets_use_group_friendly_labels():
+    presets = get_value_template_presets("en", grouped=True)
+
+    assert "Waste types in 13 days" in presets
+    assert "Bio in 13 days" not in presets
+    assert presets["Waste types in 13 days"] == (
+        '{{value.types|join(", ")}} in {{value.daysTo}} days'
+    )
+
+
 def test_convert_value_template_language_maps_known_preset():
     assert (
         convert_value_template_language(
@@ -179,6 +189,19 @@ def test_missing_collection_types_ignores_types_already_covered_by_sensors():
         "Glass",
         "Paper",
     ]
+
+
+def test_missing_collection_types_treats_alias_and_raw_type_as_covered():
+    sensors = [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id", "types": ["Bio"]},
+    ]
+    customizations = {"BIO (wrzucamy bez worków - luzem)": {"alias": "Bio"}}
+
+    assert missing_collection_types(
+        {"BIO (wrzucamy bez worków - luzem)", "Paper"},
+        sensors,
+        customizations,
+    ) == ["Paper"]
 
 
 def test_build_sensor_for_collection_type_creates_default_per_type_sensor():

@@ -352,12 +352,22 @@ def _sensor_defaults(defaults: dict[str, Any]) -> dict[str, Any]:
         derived_defaults[CONF_VALUE_TEMPLATE] = converted_template
 
     derived_defaults[CONF_VALUE_TEMPLATE + "_preset"] = get_preset_option(
-        derived_defaults.get(CONF_VALUE_TEMPLATE), get_value_template_presets(language)
+        derived_defaults.get(CONF_VALUE_TEMPLATE),
+        get_value_template_presets(
+            language,
+            grouped=_uses_grouped_type_labels(derived_defaults),
+        ),
     )
     derived_defaults[CONF_DATE_TEMPLATE + "_preset"] = get_preset_option(
         defaults.get(CONF_DATE_TEMPLATE), DATE_TEMPLATE_PRESETS
     )
     return derived_defaults
+
+
+def _uses_grouped_type_labels(sensor_config: dict[str, Any]) -> bool:
+    """Return True when state-text examples should describe multiple waste types."""
+    collection_types = sensor_config.get(CONF_COLLECTION_TYPES)
+    return not collection_types or len(collection_types) > 1
 
 
 def _show_advanced_sensor_fields(defaults: dict[str, Any]) -> bool:
@@ -448,7 +458,8 @@ def get_sensor_schema(
     defaults = _sensor_defaults(defaults or {})
     show_advanced = _show_advanced_sensor_fields(defaults)
     value_template_presets = get_value_template_presets(
-        defaults.get(CONF_PRESET_LANGUAGE)
+        defaults.get(CONF_PRESET_LANGUAGE),
+        grouped=_uses_grouped_type_labels(defaults),
     )
     display_fields: dict[Any, Any] = {
         vol.Optional(
@@ -1818,6 +1829,7 @@ async def ws_start_preview(
             date_template=sensor_input.get(CONF_DATE_TEMPLATE),
             add_days_to=sensor_input.get(CONF_ADD_DAYS_TO, False),
             event_index=sensor_input.get(CONF_EVENT_INDEX),
+            preset_language=sensor_input.get(CONF_PRESET_LANGUAGE),
         )
     except Exception as err:  # noqa: BLE001
         connection.send_result(msg["id"])

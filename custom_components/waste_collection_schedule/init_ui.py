@@ -48,6 +48,7 @@ async def async_remove_legacy_config_entities(
         if (
             "_ui_sensor_config_" in unique_id
             or "_ui_sensor_action_remove_" in unique_id
+            or "_ui_sensor_action_create_" in unique_id
         ):
             registry.async_remove(entity_entry.entity_id)
 

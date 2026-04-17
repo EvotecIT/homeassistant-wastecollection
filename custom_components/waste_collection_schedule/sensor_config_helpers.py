@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 try:
     from .const import CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
+    from .waste_collection_schedule.type_aliases import expand_requested_types
 except ImportError:  # pragma: no cover - fallback for direct test imports
     from const import CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
+    from waste_collection_schedule.type_aliases import expand_requested_types
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -223,10 +225,16 @@ def has_combined_sensor(sensors: list[dict[str, Any]]) -> bool:
 
 
 def missing_collection_types(
-    available_types: set[str], sensors: list[dict[str, Any]]
+    available_types: set[str],
+    sensors: list[dict[str, Any]],
+    customizations: Mapping[str, Any] | None = None,
 ) -> list[str]:
     """Return available collection types not already covered by a sensor."""
-    return sorted(available_types - configured_collection_types(sensors))
+    configured_types = configured_collection_types(sensors)
+    expanded_configured_types = expand_requested_types(
+        configured_types, customizations
+    )
+    return sorted(available_types - (expanded_configured_types or set()))
 
 
 def build_sensor_for_collection_type(

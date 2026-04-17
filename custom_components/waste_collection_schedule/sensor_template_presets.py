@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 
 DEFAULT_OPTION = "Default"
 CUSTOM_OPTION = "Custom"
@@ -61,6 +61,17 @@ VALUE_TEMPLATE_PRESET_DEFINITIONS: list[dict[str, tuple[str, str]]] = [
     },
 ]
 
+GROUPED_VALUE_TEMPLATE_LABELS: dict[int, dict[str, str]] = {
+    1: {
+        "en": "Waste types in 13 days",
+        "pl": "Typy odpadów za 13 dni",
+    },
+    6: {
+        "en": "Waste types",
+        "pl": "Typy odpadów",
+    },
+}
+
 
 def normalize_preset_language(language: str | None) -> str:
     """Return a supported preset language code."""
@@ -79,21 +90,28 @@ def get_preset_language_value(label: str) -> str:
     return PRESET_LANGUAGE_OPTIONS.get(label, DEFAULT_PRESET_LANGUAGE)
 
 
-def get_value_template_presets(language: str | None) -> dict[str, str]:
+def get_value_template_presets(
+    language: str | None, grouped: bool = False
+) -> dict[str, str]:
     """Return state-text presets for the selected language."""
     language = normalize_preset_language(language)
-    return {
-        labels[language][0]: labels[language][1]
-        for labels in VALUE_TEMPLATE_PRESET_DEFINITIONS
-    }
+    presets = {}
+    for index, labels in enumerate(VALUE_TEMPLATE_PRESET_DEFINITIONS):
+        label = labels[language][0]
+        if grouped:
+            label = GROUPED_VALUE_TEMPLATE_LABELS.get(index, {}).get(language, label)
+        presets[label] = labels[language][1]
+    return presets
 
 
 def get_all_value_template_presets() -> dict[str, str]:
     """Return every state-text preset across supported languages."""
     presets: dict[str, str] = {}
-    for labels in VALUE_TEMPLATE_PRESET_DEFINITIONS:
+    for index, labels in enumerate(VALUE_TEMPLATE_PRESET_DEFINITIONS):
         for label, template in labels.values():
             presets[label] = template
+        for language, label in GROUPED_VALUE_TEMPLATE_LABELS.get(index, {}).items():
+            presets[label] = labels[language][1]
     return presets
 
 
@@ -130,6 +148,25 @@ def convert_value_template_language(
 
     language = normalize_preset_language(language)
     return VALUE_TEMPLATE_PRESET_DEFINITIONS[index][language][1]
+
+
+def format_default_state_text(
+    types: Iterable[str], days_to: int, separator: str, language: str | None
+) -> str:
+    """Return the built-in sensor state text in the selected display language."""
+    type_text = separator.join(types)
+    if normalize_preset_language(language) == "pl":
+        if days_to == 0:
+            return f"{type_text} dzisiaj"
+        if days_to == 1:
+            return f"{type_text} jutro"
+        return f"{type_text} za {days_to} dni"
+
+    if days_to == 0:
+        return f"{type_text} today"
+    if days_to == 1:
+        return f"{type_text} tomorrow"
+    return f"{type_text} in {days_to} days"
 
 
 VALUE_TEMPLATE_PRESETS = get_value_template_presets(DEFAULT_PRESET_LANGUAGE)

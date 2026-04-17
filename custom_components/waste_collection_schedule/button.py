@@ -31,7 +31,11 @@ async def async_setup_entry(
     if not has_combined_sensor(sensors):
         entities.append(CreateCombinedWasteSensorButton(entry, coordinator))
 
-    for collection_type in missing_collection_types(coordinator._aggregator.types, sensors):
+    for collection_type in missing_collection_types(
+        coordinator._aggregator.types,
+        sensors,
+        coordinator.shell._customize,
+    ):
         entities.append(CreateWasteSensorButton(entry, coordinator, collection_type))
 
     async_add_entities(entities)

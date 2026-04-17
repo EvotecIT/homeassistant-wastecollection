@@ -29,6 +29,7 @@ from .const import (
     CONF_DETAILS_FORMAT,
     CONF_EVENT_INDEX,
     CONF_LEADTIME,
+    CONF_PRESET_LANGUAGE,
     CONF_SENSOR_ID,
     CONF_SENSORS,
     CONF_SOURCE_INDEX,
@@ -39,6 +40,7 @@ from .sensor_config_helpers import (
     build_ui_sensor_device_identifier,
     build_ui_sensor_unique_id,
 )
+from .sensor_template_presets import format_default_state_text
 from .waste_collection_api import WasteCollectionApi
 from .waste_collection_schedule import Collection, CollectionGroup
 from .wcs_coordinator import WCSCoordinator
@@ -102,6 +104,7 @@ def render_sensor_preview(
     date_template: Template | None,
     add_days_to: bool,
     event_index: int | None,
+    preset_language: str | None = None,
 ) -> tuple[Any, dict[str, Any], str, str | None]:
     """Render the current sensor state and attributes for UI preview and entities."""
     include_today = datetime.datetime.now().time() < day_switch_time
@@ -120,7 +123,12 @@ def render_sensor_preview(
     if value_template is not None:
         value = value_template.async_render_with_possible_json_value(collection, None)
     else:
-        value = f"{separator.join(collection.types)} in {collection.daysTo} days"
+        value = format_default_state_text(
+            collection.types,
+            collection.daysTo,
+            separator,
+            preset_language,
+        )
 
     def render_date(entry: Collection):
         if date_template is not None:
@@ -226,6 +234,7 @@ async def async_setup_entry(hass, config: ConfigEntry, async_add_entities):
                 date_template=date_template,
                 add_days_to=sensor.get(CONF_ADD_DAYS_TO, False),
                 event_index=sensor.get(CONF_EVENT_INDEX),
+                preset_language=sensor.get(CONF_PRESET_LANGUAGE),
             )
         )
 
@@ -311,6 +320,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             date_template=date_template,
             add_days_to=sensor_config.get(CONF_ADD_DAYS_TO, False),
             event_index=sensor_config.get(CONF_EVENT_INDEX, 0),
+            preset_language=sensor_config.get(CONF_PRESET_LANGUAGE),
         )
     )
 
@@ -336,6 +346,7 @@ class ScheduleSensor(SensorEntity):
         date_template: Template | None,
         add_days_to: bool,
         event_index: int | None,
+        preset_language: str | None = None,
     ):
         """Initialize the entity."""
         self._api = api
@@ -349,6 +360,7 @@ class ScheduleSensor(SensorEntity):
         self._date_template = date_template
         self._add_days_to = add_days_to
         self._event_index = event_index
+        self._preset_language = preset_language
         self._sensor_id = sensor_id
 
         self._value: Any = None
@@ -434,8 +446,11 @@ class ScheduleSensor(SensorEntity):
                 collection, None
             )
         else:
-            self._value = (
-                f"{self._separator.join(collection.types)} in {collection.daysTo} days"
+            self._value = format_default_state_text(
+                collection.types,
+                collection.daysTo,
+                self._separator,
+                self._preset_language,
             )
 
         self._attr_icon = collection.icon or "mdi:trash-can"
@@ -476,6 +491,7 @@ class ScheduleSensor(SensorEntity):
             date_template=self._date_template,
             add_days_to=self._add_days_to,
             event_index=self._event_index,
+            preset_language=self._preset_language,
         )
         self._add_refreshtime()
 

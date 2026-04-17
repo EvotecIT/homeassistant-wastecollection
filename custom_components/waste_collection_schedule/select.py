@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import (
     CONF_COUNT,
+    CONF_COLLECTION_TYPES,
     CONF_DATE_TEMPLATE,
     CONF_DETAILS_FORMAT,
     CONF_EVENT_INDEX,
@@ -334,8 +335,10 @@ class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
     def presets(self) -> dict[str, str]:
         """Return the presets for the current sensor language and field."""
         if self._key == CONF_VALUE_TEMPLATE:
+            collection_types = self.sensor_config.get(CONF_COLLECTION_TYPES)
             return get_value_template_presets(
-                self.sensor_config.get(CONF_PRESET_LANGUAGE)
+                self.sensor_config.get(CONF_PRESET_LANGUAGE),
+                grouped=not collection_types or len(collection_types) > 1,
             )
         return DATE_TEMPLATE_PRESETS
 
