@@ -8,7 +8,10 @@ DEFAULT_OPTION = "Default"
 CUSTOM_OPTION = "Custom"
 DEFAULT_PRESET_LANGUAGE = "en"
 PRESET_LANGUAGE_OPTIONS: dict[str, str] = {
+    "Deutsch": "de",
     "English": "en",
+    "Français": "fr",
+    "Italiano": "it",
     "Polski": "pl",
 }
 PRESET_LANGUAGE_LABELS = {
@@ -19,6 +22,18 @@ EN_RELATIVE_TEMPLATE = (
     "{% if value.daysTo == 0 %}Today{% elif value.daysTo == 1 %}Tomorrow"
     "{% else %}in {{value.daysTo}} days{% endif %}"
 )
+DE_RELATIVE_TEMPLATE = (
+    "{% if value.daysTo == 0 %}Heute{% elif value.daysTo == 1 %}Morgen"
+    "{% else %}in {{value.daysTo}} Tagen{% endif %}"
+)
+FR_RELATIVE_TEMPLATE = (
+    "{% if value.daysTo == 0 %}Aujourd'hui{% elif value.daysTo == 1 %}Demain"
+    "{% else %}dans {{value.daysTo}} jours{% endif %}"
+)
+IT_RELATIVE_TEMPLATE = (
+    "{% if value.daysTo == 0 %}Oggi{% elif value.daysTo == 1 %}Domani"
+    "{% else %}tra {{value.daysTo}} giorni{% endif %}"
+)
 PL_RELATIVE_TEMPLATE = (
     "{% if value.daysTo == 0 %}Dzisiaj{% elif value.daysTo == 1 %}Jutro"
     "{% else %}za {{value.daysTo}} dni{% endif %}"
@@ -26,48 +41,84 @@ PL_RELATIVE_TEMPLATE = (
 
 VALUE_TEMPLATE_PRESET_DEFINITIONS: list[dict[str, tuple[str, str]]] = [
     {
+        "de": ("in 13 Tagen", "in {{value.daysTo}} Tagen"),
         "en": ("in 13 days", "in {{value.daysTo}} days"),
+        "fr": ("dans 13 jours", "dans {{value.daysTo}} jours"),
+        "it": ("tra 13 giorni", "tra {{value.daysTo}} giorni"),
         "pl": ("za 13 dni", "za {{value.daysTo}} dni"),
     },
     {
+        "de": (
+            "Bio in 13 Tagen",
+            '{{value.types|join(", ")}} in {{value.daysTo}} Tagen',
+        ),
         "en": ("Bio in 13 days", '{{value.types|join(", ")}} in {{value.daysTo}} days'),
+        "fr": (
+            "Bio dans 13 jours",
+            '{{value.types|join(", ")}} dans {{value.daysTo}} jours',
+        ),
+        "it": (
+            "Bio tra 13 giorni",
+            '{{value.types|join(", ")}} tra {{value.daysTo}} giorni',
+        ),
         "pl": ("Bio za 13 dni", '{{value.types|join(", ")}} za {{value.daysTo}} dni'),
     },
     {
+        "de": ("13", "{{value.daysTo}}"),
         "en": ("13", "{{value.daysTo}}"),
+        "fr": ("13", "{{value.daysTo}}"),
+        "it": ("13", "{{value.daysTo}}"),
         "pl": ("13", "{{value.daysTo}}"),
     },
     {
+        "de": ("Heute / Morgen / in 13 Tagen", DE_RELATIVE_TEMPLATE),
         "en": ("Today / Tomorrow / in 13 days", EN_RELATIVE_TEMPLATE),
+        "fr": ("Aujourd'hui / Demain / dans 13 jours", FR_RELATIVE_TEMPLATE),
+        "it": ("Oggi / Domani / tra 13 giorni", IT_RELATIVE_TEMPLATE),
         "pl": ("Dzisiaj / Jutro / za 13 dni", PL_RELATIVE_TEMPLATE),
     },
     {
+        "de": ("am 14.04.2026", 'am {{value.date.strftime("%d.%m.%Y")}}'),
         "en": (
             "on Tue, 14.04.2026",
             'on {{value.date.strftime("%a")}}, {{value.date.strftime("%d.%m.%Y")}}',
         ),
+        "fr": ("le 14/04/2026", 'le {{value.date.strftime("%d/%m/%Y")}}'),
+        "it": ("il 14/04/2026", 'il {{value.date.strftime("%d/%m/%Y")}}'),
         "pl": ("14.04.2026", '{{value.date.strftime("%d.%m.%Y")}}'),
     },
     {
+        "de": ("2026-04-14", '{{value.date.strftime("%Y-%m-%d")}}'),
         "en": (
             "on Tue, 2026-04-14",
             'on {{value.date.strftime("%a")}}, {{value.date.strftime("%Y-%m-%d")}}',
         ),
+        "fr": ("2026-04-14", '{{value.date.strftime("%Y-%m-%d")}}'),
+        "it": ("2026-04-14", '{{value.date.strftime("%Y-%m-%d")}}'),
         "pl": ("2026-04-14", '{{value.date.strftime("%Y-%m-%d")}}'),
     },
     {
+        "de": ("Bio", '{{value.types|join(", ")}}'),
         "en": ("Bio", '{{value.types|join(", ")}}'),
+        "fr": ("Bio", '{{value.types|join(", ")}}'),
+        "it": ("Bio", '{{value.types|join(", ")}}'),
         "pl": ("Bio", '{{value.types|join(", ")}}'),
     },
 ]
 
 GROUPED_VALUE_TEMPLATE_LABELS: dict[int, dict[str, str]] = {
     1: {
+        "de": "Abfallarten in 13 Tagen",
         "en": "Waste types in 13 days",
+        "fr": "Types de déchets dans 13 jours",
+        "it": "Tipi di rifiuti tra 13 giorni",
         "pl": "Typy odpadów za 13 dni",
     },
     6: {
+        "de": "Abfallarten",
         "en": "Waste types",
+        "fr": "Types de déchets",
+        "it": "Tipi di rifiuti",
         "pl": "Typy odpadów",
     },
 }
@@ -155,7 +206,26 @@ def format_default_state_text(
 ) -> str:
     """Return the built-in sensor state text in the selected display language."""
     type_text = separator.join(types)
-    if normalize_preset_language(language) == "pl":
+    language = normalize_preset_language(language)
+    if language == "de":
+        if days_to == 0:
+            return f"{type_text} heute"
+        if days_to == 1:
+            return f"{type_text} morgen"
+        return f"{type_text} in {days_to} Tagen"
+    if language == "fr":
+        if days_to == 0:
+            return f"{type_text} aujourd'hui"
+        if days_to == 1:
+            return f"{type_text} demain"
+        return f"{type_text} dans {days_to} jours"
+    if language == "it":
+        if days_to == 0:
+            return f"{type_text} oggi"
+        if days_to == 1:
+            return f"{type_text} domani"
+        return f"{type_text} tra {days_to} giorni"
+    if language == "pl":
         if days_to == 0:
             return f"{type_text} dzisiaj"
         if days_to == 1:

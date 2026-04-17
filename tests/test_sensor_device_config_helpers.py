@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -34,8 +35,10 @@ from custom_components.waste_collection_schedule.sensor_template_presets import 
     PL_RELATIVE_TEMPLATE,
     CUSTOM_OPTION,
     DEFAULT_OPTION,
+    PRESET_LANGUAGE_OPTIONS,
     VALUE_TEMPLATE_PRESETS,
     convert_value_template_language,
+    format_default_state_text,
     get_preset_option,
     get_value_template_presets,
 )
@@ -71,6 +74,52 @@ def test_grouped_value_template_presets_use_group_friendly_labels():
     assert presets["Waste types in 13 days"] == (
         '{{value.types|join(", ")}} in {{value.daysTo}} days'
     )
+
+
+def test_display_language_options_cover_translation_files():
+    translations_dir = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "custom_components",
+        "waste_collection_schedule",
+        "translations",
+    )
+    translation_languages = {
+        os.path.splitext(filename)[0]
+        for filename in os.listdir(translations_dir)
+        if filename.endswith(".json")
+    }
+
+    assert set(PRESET_LANGUAGE_OPTIONS.values()) == translation_languages
+
+
+def test_display_language_translation_keys_exist_for_all_translations():
+    translations_dir = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "custom_components",
+        "waste_collection_schedule",
+        "translations",
+    )
+
+    for filename in os.listdir(translations_dir):
+        if not filename.endswith(".json"):
+            continue
+        with open(os.path.join(translations_dir, filename), encoding="utf-8") as file:
+            translation = json.load(file)
+        sensor_step = translation["config"]["step"]["sensor"]
+        if "sections" in sensor_step:
+            sensor_data = sensor_step["sections"]["display"]["data"]
+        else:
+            sensor_data = sensor_step.get("data", {})
+        assert "preset_language" in sensor_data
+
+
+def test_default_state_text_supports_all_display_languages():
+    assert format_default_state_text(["Bio"], 2, ", ", "de") == "Bio in 2 Tagen"
+    assert format_default_state_text(["Bio"], 2, ", ", "fr") == "Bio dans 2 jours"
+    assert format_default_state_text(["Bio"], 2, ", ", "it") == "Bio tra 2 giorni"
+    assert format_default_state_text(["Bio"], 2, ", ", "pl") == "Bio za 2 dni"
 
 
 def test_convert_value_template_language_maps_known_preset():
