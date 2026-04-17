@@ -1,18 +1,18 @@
-"""Advanced device-page text configuration for Waste Collection Schedule sensors."""
+"""Advanced device-page switches for Waste Collection Schedule sensors."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
 
-from homeassistant.components.text import TextEntity
+from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME, CONF_VALUE_TEMPLATE, EntityCategory
+from homeassistant.const import CONF_NAME, EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import CONF_DATE_TEMPLATE, CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
+from .const import CONF_ADD_DAYS_TO, CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
 from .sensor_config_helpers import (
     build_ui_sensor_device_identifier,
     build_updated_options_by_sensor_id,
@@ -25,9 +25,9 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up advanced template text entities for each configured waste sensor."""
+    """Set up advanced switch entities for each configured waste sensor."""
     coordinator: WCSCoordinator = hass.data[DOMAIN][entry.entry_id]
-    entities: list[TextEntity] = []
+    entities: list[SwitchEntity] = []
 
     for sensor_config in entry.options.get(CONF_SENSORS, []):
         sensor_id = sensor_config.get(CONF_SENSOR_ID)
@@ -35,43 +35,29 @@ async def async_setup_entry(
         if not sensor_id:
             continue
 
-        entities.extend(
-            [
-                WasteSensorTemplateText(
-                    entry,
-                    coordinator,
-                    sensor_id,
-                    sensor_name,
-                    key=CONF_VALUE_TEMPLATE,
-                    key_suffix="state_template",
-                    label="Advanced: custom state template",
-                    icon="mdi:code-braces",
-                ),
-                WasteSensorTemplateText(
-                    entry,
-                    coordinator,
-                    sensor_id,
-                    sensor_name,
-                    key=CONF_DATE_TEMPLATE,
-                    key_suffix="date_template",
-                    label="Advanced: custom date template",
-                    icon="mdi:calendar-edit",
-                ),
-            ]
+        entities.append(
+            WasteSensorConfigSwitch(
+                entry,
+                coordinator,
+                sensor_id,
+                sensor_name,
+                key=CONF_ADD_DAYS_TO,
+                key_suffix="days_to_attribute",
+                label="Advanced: expose days-to attribute",
+                icon="mdi:calendar-clock",
+            )
         )
 
     async_add_entities(entities)
 
 
-class WasteSensorTemplateText(TextEntity):
-    """Text entity for editing a waste sensor template directly from its device."""
+class WasteSensorConfigSwitch(SwitchEntity):
+    """Switch entity for boolean waste sensor options."""
 
     _attr_should_poll = False
     _attr_entity_category = EntityCategory.CONFIG
     _attr_entity_registry_enabled_default = False
     _attr_has_entity_name = True
-    _attr_native_min = 0
-    _attr_native_max = 500
 
     def __init__(
         self,
@@ -113,23 +99,28 @@ class WasteSensorTemplateText(TextEntity):
         )
 
     @property
-    def native_value(self) -> str:
-        """Return the current template string."""
-        return str(self.sensor_config.get(self._key, ""))
+    def is_on(self) -> bool:
+        """Return whether the config option is enabled."""
+        return bool(self.sensor_config.get(self._key, False))
 
-    async def async_set_value(self, value: str) -> None:
-        """Persist the edited template string."""
-        if value.strip():
-            options = build_updated_options_by_sensor_id(
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Enable the config option."""
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            options=build_updated_options_by_sensor_id(
                 self._entry,
                 sensor_id=self._sensor_id,
-                updates={self._key: value},
-            )
-        else:
-            options = build_updated_options_by_sensor_id(
+                updates={self._key: True},
+            ),
+        )
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Disable the config option."""
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            options=build_updated_options_by_sensor_id(
                 self._entry,
                 sensor_id=self._sensor_id,
                 removals=(self._key,),
-            )
-
-        self.hass.config_entries.async_update_entry(self._entry, options=options)
+            ),
+        )

@@ -13,8 +13,11 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import (
+    CONF_COUNT,
     CONF_DATE_TEMPLATE,
     CONF_DETAILS_FORMAT,
+    CONF_EVENT_INDEX,
+    CONF_LEADTIME,
     CONF_SENSOR_ID,
     CONF_SENSORS,
     DOMAIN,
@@ -40,6 +43,34 @@ LAYOUT_LABELS = {
     DetailsFormat.hidden.value: "Hide details",
 }
 LAYOUT_VALUES = {label: value for value, label in LAYOUT_LABELS.items()}
+
+COUNT_LABELS = {
+    "Default": None,
+    "1 pickup": 1,
+    "2 pickups": 2,
+    "3 pickups": 3,
+    "5 pickups": 5,
+    "10 pickups": 10,
+    "20 pickups": 20,
+}
+
+LEADTIME_LABELS = {
+    "Default": None,
+    "1 day": 1,
+    "3 days": 3,
+    "7 days": 7,
+    "14 days": 14,
+    "30 days": 30,
+    "60 days": 60,
+}
+
+EVENT_INDEX_LABELS = {
+    "First matching pickup": 0,
+    "Second matching pickup": 1,
+    "Third matching pickup": 2,
+    "Fourth matching pickup": 3,
+    "Fifth matching pickup": 4,
+}
 
 
 async def async_setup_entry(
@@ -82,6 +113,42 @@ async def async_setup_entry(
                     presets=DATE_TEMPLATE_PRESETS,
                     icon="mdi:calendar-text",
                 ),
+                WasteSensorNumberPresetSelect(
+                    entry,
+                    coordinator,
+                    sensor_id,
+                    sensor_name,
+                    key=CONF_COUNT,
+                    key_suffix="count",
+                    label="Advanced: upcoming count",
+                    options=COUNT_LABELS,
+                    default_option="Default",
+                    icon="mdi:counter",
+                ),
+                WasteSensorNumberPresetSelect(
+                    entry,
+                    coordinator,
+                    sensor_id,
+                    sensor_name,
+                    key=CONF_LEADTIME,
+                    key_suffix="leadtime",
+                    label="Advanced: lead time",
+                    options=LEADTIME_LABELS,
+                    default_option="Default",
+                    icon="mdi:calendar-range",
+                ),
+                WasteSensorNumberPresetSelect(
+                    entry,
+                    coordinator,
+                    sensor_id,
+                    sensor_name,
+                    key=CONF_EVENT_INDEX,
+                    key_suffix="event_index",
+                    label="Advanced: pickup to show",
+                    options=EVENT_INDEX_LABELS,
+                    default_option="First matching pickup",
+                    icon="mdi:format-list-numbered",
+                ),
             ]
         )
 
@@ -104,6 +171,7 @@ class WasteSensorConfigEntity:
         key_suffix: str,
         display_name: str,
         icon: str | None = None,
+        enabled_default: bool = True,
     ) -> None:
         self._entry = entry
         self._coordinator = coordinator
@@ -124,6 +192,8 @@ class WasteSensorConfigEntity:
         )
         if icon:
             self._attr_icon = icon
+        if not enabled_default:
+            self._attr_entity_registry_enabled_default = False
 
     @property
     def sensor_config(self) -> Mapping[str, Any]:
@@ -202,6 +272,7 @@ class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
         label: str,
         presets: dict[str, str],
         icon: str,
+        enabled_default: bool = True,
     ) -> None:
         super().__init__(
             entry,
@@ -211,6 +282,7 @@ class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
             key_suffix=key_suffix,
             display_name=label,
             icon=icon,
+            enabled_default=enabled_default,
         )
         self._key = key
         self._presets = presets
@@ -229,3 +301,52 @@ class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
             await self._async_save(removals=(self._key,))
             return
         await self._async_save(updates={self._key: self._presets[option]})
+
+
+class WasteSensorNumberPresetSelect(WasteSensorConfigEntity, SelectEntity):
+    """Advanced select for numeric sensor options that can be reset to default."""
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: WCSCoordinator,
+        sensor_id: str,
+        sensor_name: str,
+        key: str,
+        key_suffix: str,
+        label: str,
+        options: dict[str, int | None],
+        default_option: str,
+        icon: str,
+    ) -> None:
+        super().__init__(
+            entry,
+            coordinator,
+            sensor_id,
+            sensor_name,
+            key_suffix=key_suffix,
+            display_name=label,
+            icon=icon,
+            enabled_default=False,
+        )
+        self._key = key
+        self._options = options
+        self._default_option = default_option
+        self._attr_options = list(options.keys())
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the label matching the stored numeric option."""
+        current = self.sensor_config.get(self._key)
+        for label, value in self._options.items():
+            if current == value:
+                return label
+        return self._default_option
+
+    async def async_select_option(self, option: str) -> None:
+        """Persist the selected numeric option."""
+        value = self._options[option]
+        if value is None:
+            await self._async_save(removals=(self._key,))
+            return
+        await self._async_save(updates={self._key: value})
