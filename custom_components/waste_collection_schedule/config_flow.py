@@ -86,6 +86,7 @@ from .const import (
 from .init_ui import WCSCoordinator
 from .sensor import DetailsFormat, render_sensor_preview
 from .sensor_form_helpers import apply_template_presets
+from .sensor_config_helpers import build_sensor_for_collection_type
 from .sensor_template_presets import (
     DATE_TEMPLATE_PRESETS,
     VALUE_TEMPLATE_PRESETS,
@@ -141,7 +142,12 @@ SECTION_SENSOR_DISPLAY = "display"
 SECTION_SENSOR_FILTERING = "filtering"
 SECTION_SENSOR_MANAGEMENT = "management"
 SECTION_CUSTOMIZE_MANAGEMENT = "management"
+SECTION_ONBOARDING_SENSORS = "sensors"
+SECTION_ONBOARDING_ADVANCED = "advanced"
 CONF_ADVANCED_MODE = "advanced_mode"
+CONF_CREATE_SENSORS_FOR_TYPES = "create_sensors_for_types"
+CONF_CUSTOMIZE_COLLECTION_TYPES = "customize_collection_types"
+CONF_OPEN_ADVANCED_SENSOR_EDITOR = "open_advanced_sensor_editor"
 
 
 def _get_source_metadata(source: str) -> dict[str, Any]:
@@ -359,6 +365,48 @@ def _should_refresh_sensor_form(
     current_show_advanced = _show_advanced_sensor_fields(derived_defaults)
     requested_show_advanced = user_input.get(CONF_ADVANCED_MODE, current_show_advanced)
     return bool(requested_show_advanced) != current_show_advanced
+
+
+def get_detected_types_schema(fetched_types: list[str]) -> vol.Schema:
+    """Return onboarding schema for creating per-type waste sensors."""
+    type_options = sorted(fetched_types)
+    return vol.Schema(
+        {
+            vol.Required(SECTION_ONBOARDING_SENSORS): section(
+                vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_CREATE_SENSORS_FOR_TYPES,
+                            default=type_options,
+                        ): SelectSelector(
+                            SelectSelectorConfig(
+                                options=type_options,
+                                mode=SelectSelectorMode.DROPDOWN,
+                                custom_value=False,
+                                multiple=True,
+                            )
+                        ),
+                    }
+                ),
+                {"collapsed": False},
+            ),
+            vol.Required(SECTION_ONBOARDING_ADVANCED): section(
+                vol.Schema(
+                    {
+                        vol.Optional(
+                            CONF_CUSTOMIZE_COLLECTION_TYPES,
+                            default=False,
+                        ): cv.boolean,
+                        vol.Optional(
+                            CONF_OPEN_ADVANCED_SENSOR_EDITOR,
+                            default=False,
+                        ): cv.boolean,
+                    }
+                ),
+                {"collapsed": True},
+            ),
+        }
+    )
 
 
 def get_sensor_schema(
@@ -1001,13 +1049,48 @@ class WasteCollectionConfigFlow(ConfigFlow, domain=DOMAIN):  # type: ignore[call
                     CONF_SOURCE_ARGS: args_input,
                 }
                 self._options.update(options)
-                self.async_show_form(step_id="options")
-                return await self.async_step_flow_type()
+                return await self.async_step_detected_types()
         return self.async_show_form(
             step_id=f"args_{self._id}",
             data_schema=schema,
             errors=errors,
             description_placeholders=description_placeholders,
+        )
+
+    async def async_step_detected_types(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Let users create one clean device-backed sensor per detected waste type."""
+        if user_input is not None:
+            user_input = flatten_section_input(
+                user_input, {SECTION_ONBOARDING_SENSORS, SECTION_ONBOARDING_ADVANCED}
+            )
+            selected_types = user_input.get(CONF_CREATE_SENSORS_FOR_TYPES, [])
+            self.sensors = [
+                build_sensor_for_collection_type(collection_type)
+                for collection_type in selected_types
+            ]
+            self._options[CONF_SENSORS] = self.sensors
+            self._show_customize_config = user_input.get(
+                CONF_CUSTOMIZE_COLLECTION_TYPES, False
+            )
+            self._show_sensor_config = user_input.get(
+                CONF_OPEN_ADVANCED_SENSOR_EDITOR, False
+            )
+
+            if self._show_customize_config:
+                return await self.async_step_customize_select()
+            if self._show_sensor_config:
+                return await self.async_step_sensor()
+            return await self.finish()
+
+        return self.async_show_form(
+            step_id="detected_types",
+            data_schema=get_detected_types_schema(self._fetched_types),
+            description_placeholders={
+                "count": str(len(self._fetched_types)),
+                "types": ", ".join(sorted(self._fetched_types)),
+            },
         )
 
     async def async_step_flow_type(
@@ -1267,6 +1350,40 @@ class WasteCollectionOptionsFlow(OptionsFlow):
 
         customize_options = self._entry.options.get(CONF_CUSTOMIZE, {})
         uncustomized_types = get_uncustomized_types(collection_types, customize_options)
+        sensor_options = [
+            SelectOptionDict(label=x[CONF_NAME], value=x[CONF_NAME])
+            for x in self._entry.options.get(CONF_SENSORS, [])
+        ]
+        customize_select_options = [
+            *[
+                SelectOptionDict(label=get_customize_label(key, value), value=key)
+                for key, value in customize_options.items()
+            ],
+            *[SelectOptionDict(label=x, value=x) for x in uncustomized_types],
+        ]
+
+        manage_fields: dict[Any, Any] = {}
+        if sensor_options:
+            manage_fields[
+                vol.Optional("sensor_select")
+            ] = SelectSelector(
+                SelectSelectorConfig(
+                    translation_key="sensor_select",
+                    options=sensor_options,
+                    custom_value=False,
+                    multiple=True,
+                )
+            )
+        if customize_select_options:
+            manage_fields[
+                vol.Optional("customize_select")
+            ] = SelectSelector(
+                SelectSelectorConfig(
+                    options=customize_select_options,
+                    custom_value=True,
+                    multiple=True,
+                )
+            )
 
         SCHEMA = vol.Schema(
             {
@@ -1327,56 +1444,8 @@ class WasteCollectionOptionsFlow(OptionsFlow):
                     {"collapsed": False},
                 ),
                 vol.Required(SECTION_MANAGE): section(
-                    vol.Schema(
-                        {
-                            vol.Optional(
-                                "sensor_select",
-                            ): SelectSelector(
-                                SelectSelectorConfig(
-                                    translation_key="sensor_select",
-                                    options=[
-                                        *[
-                                            SelectOptionDict(
-                                                label=x[CONF_NAME],
-                                                value=x[CONF_NAME],
-                                            )
-                                            for x in self._entry.options.get(
-                                                CONF_SENSORS, []
-                                            )
-                                        ],
-                                        SelectOptionDict(
-                                            label="add_new_sensor",
-                                            value="sensor_select_add_new",
-                                        ),
-                                    ],
-                                    custom_value=False,
-                                    multiple=True,
-                                )
-                            ),
-                            vol.Optional(
-                                "customize_select",
-                            ): SelectSelector(
-                                SelectSelectorConfig(
-                                    options=[
-                                        *[
-                                            SelectOptionDict(
-                                                label=get_customize_label(key, value),
-                                                value=key,
-                                            )
-                                            for key, value in customize_options.items()
-                                        ],
-                                        *[
-                                            SelectOptionDict(label=x, value=x)
-                                            for x in uncustomized_types
-                                        ],
-                                    ],
-                                    custom_value=True,
-                                    multiple=True,
-                                )
-                            ),
-                        }
-                    ),
-                    {"collapsed": False},
+                    vol.Schema(manage_fields),
+                    {"collapsed": True},
                 ),
             }
         )
