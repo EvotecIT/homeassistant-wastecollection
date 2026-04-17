@@ -27,7 +27,7 @@ from .waste_collection_schedule import SourceShell, Customize  # type: ignore # 
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = ["calendar", "sensor"]
+PLATFORMS = ["calendar", "sensor", "select"]
 
 
 async def async_remove_legacy_config_entities(

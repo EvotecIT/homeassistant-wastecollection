@@ -28,6 +28,11 @@ def build_stable_ui_sensor_unique_id(shell_unique_id: str, sensor_id: str) -> st
     return f"{shell_unique_id}_ui_sensor_{sensor_id}"
 
 
+def build_ui_sensor_device_identifier(shell_unique_id: str, sensor_id: str) -> str:
+    """Return the stable device identifier for a configured UI sensor."""
+    return f"{shell_unique_id}_sensor_{sensor_id}"
+
+
 def build_ui_sensor_unique_id(
     shell_unique_id: str, sensor_name: str, sensor_id: str | None
 ) -> str:
@@ -79,6 +84,29 @@ def update_sensor_config_list(
     raise KeyError(f"Sensor '{sensor_name}' not found")
 
 
+def update_sensor_config_list_by_id(
+    sensors: list[dict[str, Any]],
+    sensor_id: str,
+    updates: dict[str, Any] | None = None,
+    removals: tuple[str, ...] = (),
+) -> list[dict[str, Any]]:
+    """Return a new sensor list with updates applied to one sensor by stable ID."""
+    updated_sensors = deepcopy(sensors)
+    for sensor in updated_sensors:
+        if sensor.get(CONF_SENSOR_ID) != sensor_id:
+            continue
+
+        for key in removals:
+            sensor.pop(key, None)
+
+        if updates:
+            sensor.update(updates)
+
+        return updated_sensors
+
+    raise KeyError(f"Sensor ID '{sensor_id}' not found")
+
+
 def ensure_sensor_ids(
     sensors: list[dict[str, Any]],
     id_factory: Callable[[], str] | None = None,
@@ -125,6 +153,23 @@ def build_updated_options(
     options[CONF_SENSORS] = update_sensor_config_list(
         options.get(CONF_SENSORS, []),
         sensor_name=sensor_name,
+        updates=updates,
+        removals=removals,
+    )
+    return options
+
+
+def build_updated_options_by_sensor_id(
+    entry: ConfigEntry,
+    sensor_id: str,
+    updates: dict[str, Any] | None = None,
+    removals: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """Build a new config entry options payload for one stable sensor update."""
+    options = deepcopy(dict(entry.options))
+    options[CONF_SENSORS] = update_sensor_config_list_by_id(
+        options.get(CONF_SENSORS, []),
+        sensor_id=sensor_id,
         updates=updates,
         removals=removals,
     )

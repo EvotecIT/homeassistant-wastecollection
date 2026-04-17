@@ -17,11 +17,13 @@ sys.path.insert(
 from sensor_config_helpers import (  # noqa: E402
     build_legacy_ui_sensor_unique_id,
     build_stable_ui_sensor_unique_id,
+    build_ui_sensor_device_identifier,
     build_ui_sensor_unique_id,
     ensure_sensor_ids,
     iter_ui_sensor_unique_id_migrations,
     replace_sensor_config,
     update_sensor_config_list,
+    update_sensor_config_list_by_id,
 )
 from sensor_template_presets import (  # noqa: E402
     CUSTOM_OPTION,
@@ -79,6 +81,23 @@ def test_update_sensor_config_list_can_remove_keys():
     assert CONF_VALUE_TEMPLATE not in updated[0]
 
 
+def test_update_sensor_config_list_by_id_updates_only_matching_sensor():
+    sensors = [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
+        {CONF_NAME: "Paper", CONF_SENSOR_ID: "paper-id"},
+    ]
+
+    updated = update_sensor_config_list_by_id(
+        sensors,
+        sensor_id="paper-id",
+        updates={CONF_VALUE_TEMPLATE: "new"},
+    )
+
+    assert CONF_VALUE_TEMPLATE not in updated[0]
+    assert updated[1][CONF_VALUE_TEMPLATE] == "new"
+    assert CONF_VALUE_TEMPLATE not in sensors[1]
+
+
 def test_replace_sensor_config_replaces_only_target_sensor():
     sensors = [
         {CONF_NAME: "Bio", CONF_VALUE_TEMPLATE: "old"},
@@ -122,6 +141,13 @@ def test_build_ui_sensor_unique_id_uses_stable_id_when_available():
 def test_build_ui_sensor_unique_id_falls_back_to_legacy_name():
     assert build_ui_sensor_unique_id("source-1", "Bio", None) == (
         "source-1_ui_sensor_Bio"
+    )
+
+
+def test_build_ui_sensor_device_identifier_uses_stable_sensor_id():
+    assert (
+        build_ui_sensor_device_identifier("source-1", "sensor-1")
+        == "source-1_sensor_sensor-1"
     )
 
 

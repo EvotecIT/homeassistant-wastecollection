@@ -35,7 +35,10 @@ from .const import (
     DOMAIN,
     UPDATE_SENSORS_SIGNAL,
 )
-from .sensor_config_helpers import build_ui_sensor_unique_id
+from .sensor_config_helpers import (
+    build_ui_sensor_device_identifier,
+    build_ui_sensor_unique_id,
+)
 from .waste_collection_api import WasteCollectionApi
 from .waste_collection_schedule import Collection, CollectionGroup
 from .wcs_coordinator import WCSCoordinator
@@ -335,8 +338,11 @@ class ScheduleSensor(SensorEntity):
                 shell.unique_id, name, sensor_id
             )
             if sensor_id:
+                device_identifier = build_ui_sensor_device_identifier(
+                    shell.unique_id, sensor_id
+                )
                 self._attr_device_info = DeviceInfo(
-                    identifiers={(DOMAIN, f"{shell.unique_id}_sensor_{sensor_id}")},
+                    identifiers={(DOMAIN, device_identifier)},
                     manufacturer=shell.title,
                     model="Waste Pickup Sensor",
                     name=name,
