@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import CONF_DATE_TEMPLATE, CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
 from .sensor_config_helpers import (
+    build_ui_sensor_control_unique_id,
     build_ui_sensor_device_identifier,
     build_updated_options_by_sensor_id,
 )
@@ -88,8 +89,8 @@ class WasteSensorTemplateText(TextEntity):
         self._sensor_id = sensor_id
         self._key = key
         self._attr_name = label
-        self._attr_unique_id = (
-            f"{coordinator.shell.unique_id}_ui_sensor_control_{sensor_id}_{key_suffix}"
+        self._attr_unique_id = build_ui_sensor_control_unique_id(
+            coordinator.shell.unique_id, sensor_id, key_suffix
         )
         device_identifier = build_ui_sensor_device_identifier(
             coordinator.shell.unique_id, sensor_id

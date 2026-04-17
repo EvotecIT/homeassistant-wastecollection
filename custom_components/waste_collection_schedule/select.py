@@ -24,6 +24,7 @@ from .const import (
 )
 from .sensor import DetailsFormat
 from .sensor_config_helpers import (
+    build_ui_sensor_control_unique_id,
     build_ui_sensor_device_identifier,
     build_updated_options_by_sensor_id,
 )
@@ -177,8 +178,8 @@ class WasteSensorConfigEntity:
         self._coordinator = coordinator
         self._sensor_id = sensor_id
         self._attr_name = display_name
-        self._attr_unique_id = (
-            f"{coordinator.shell.unique_id}_ui_sensor_control_{sensor_id}_{key_suffix}"
+        self._attr_unique_id = build_ui_sensor_control_unique_id(
+            coordinator.shell.unique_id, sensor_id, key_suffix
         )
         device_identifier = build_ui_sensor_device_identifier(
             coordinator.shell.unique_id, sensor_id

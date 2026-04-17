@@ -10,12 +10,15 @@ import requests
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .service import get_fetch_all_service
 from .sensor_config_helpers import (
+    build_ui_sensor_device_identifier,
+    configured_sensor_ids,
     ensure_sensor_ids,
     iter_ui_sensor_unique_id_migrations,
+    parse_stable_ui_sensor_id,
 )
 from .waste_collection_schedule.service.DeviceKeyStore import (
     initialize_device_key_store,
@@ -77,6 +80,57 @@ async def async_migrate_ui_sensor_unique_ids(
         registry.async_update_entity(old_entity_id, new_unique_id=new_unique_id)
 
 
+async def async_remove_abandoned_ui_sensor_registry_entries(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    shell_unique_id: str,
+    sensors: list[dict[str, Any]],
+) -> None:
+    """Remove entities/devices for UI sensors no longer present in options."""
+    active_sensor_ids = configured_sensor_ids(sensors)
+    entity_registry = er.async_get(hass)
+    removed_sensor_ids: set[str] = set()
+
+    for entity_entry in er.async_entries_for_config_entry(
+        entity_registry, entry.entry_id
+    ):
+        unique_id = entity_entry.unique_id
+        if not unique_id:
+            continue
+
+        sensor_id = parse_stable_ui_sensor_id(shell_unique_id, unique_id)
+        if sensor_id is None or sensor_id in active_sensor_ids:
+            continue
+
+        _LOGGER.debug(
+            "Removing abandoned waste sensor entity %s for sensor ID %s",
+            entity_entry.entity_id,
+            sensor_id,
+        )
+        entity_registry.async_remove(entity_entry.entity_id)
+        removed_sensor_ids.add(sensor_id)
+
+    device_registry = dr.async_get(hass)
+    for sensor_id in removed_sensor_ids:
+        device = device_registry.async_get_device(
+            identifiers={
+                (
+                    const.DOMAIN,
+                    build_ui_sensor_device_identifier(shell_unique_id, sensor_id),
+                )
+            }
+        )
+        if device is None:
+            continue
+
+        _LOGGER.debug(
+            "Removing abandoned waste sensor device %s for sensor ID %s",
+            device.id,
+            sensor_id,
+        )
+        device_registry.async_remove_device(device.id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up component from a config entry, entry contains data from config entry database."""
     options = dict(entry.options)
@@ -122,6 +176,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     await async_migrate_ui_sensor_unique_ids(
+        hass,
+        entry,
+        shell.unique_id,
+        options.get(const.CONF_SENSORS, []),
+    )
+    await async_remove_abandoned_ui_sensor_registry_entries(
         hass,
         entry,
         shell.unique_id,

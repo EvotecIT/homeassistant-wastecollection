@@ -33,6 +33,42 @@ def build_ui_sensor_device_identifier(shell_unique_id: str, sensor_id: str) -> s
     return f"{shell_unique_id}_sensor_{sensor_id}"
 
 
+def build_ui_sensor_control_unique_id(
+    shell_unique_id: str, sensor_id: str, key_suffix: str
+) -> str:
+    """Return the stable unique ID for a per-sensor config/control entity."""
+    return f"{shell_unique_id}_ui_sensor_control_{sensor_id}_{key_suffix}"
+
+
+def build_remove_ui_sensor_action_unique_id(
+    shell_unique_id: str, sensor_id: str
+) -> str:
+    """Return the stable unique ID for a per-sensor remove action."""
+    return f"{shell_unique_id}_ui_sensor_action_remove_{sensor_id}"
+
+
+def parse_stable_ui_sensor_id(shell_unique_id: str, unique_id: str) -> str | None:
+    """Extract a stable sensor ID from one of this integration's UI sensor entities."""
+    main_prefix = f"{shell_unique_id}_ui_sensor_"
+    control_prefix = f"{shell_unique_id}_ui_sensor_control_"
+    remove_prefix = f"{shell_unique_id}_ui_sensor_action_remove_"
+
+    if unique_id.startswith(control_prefix):
+        suffix = unique_id.removeprefix(control_prefix)
+        sensor_id, _, _ = suffix.partition("_")
+        return sensor_id or None
+
+    if unique_id.startswith(remove_prefix):
+        sensor_id = unique_id.removeprefix(remove_prefix)
+        return sensor_id or None
+
+    if unique_id.startswith(main_prefix) and "_ui_sensor_action_" not in unique_id:
+        sensor_id = unique_id.removeprefix(main_prefix)
+        return sensor_id or None
+
+    return None
+
+
 def build_ui_sensor_unique_id(
     shell_unique_id: str, sensor_name: str, sensor_id: str | None
 ) -> str:
@@ -59,6 +95,15 @@ def iter_ui_sensor_unique_id_migrations(
             migrations.append((old_unique_id, new_unique_id))
 
     return migrations
+
+
+def configured_sensor_ids(sensors: list[dict[str, Any]]) -> set[str]:
+    """Return stable sensor IDs that are still configured."""
+    return {
+        sensor_id
+        for sensor in sensors
+        if (sensor_id := sensor.get(CONF_SENSOR_ID))
+    }
 
 
 def update_sensor_config_list(

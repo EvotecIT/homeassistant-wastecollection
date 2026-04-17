@@ -12,6 +12,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
 from .sensor_config_helpers import (
     build_added_collection_type_sensor_options,
+    build_remove_ui_sensor_action_unique_id,
     build_removed_sensor_options,
     build_ui_sensor_device_identifier,
     missing_collection_types,
@@ -93,8 +94,8 @@ class RemoveWasteSensorButton(ButtonEntity):
         self._entry = entry
         self._sensor_id = sensor_id
         self._attr_name = "Remove waste sensor"
-        self._attr_unique_id = (
-            f"{coordinator.shell.unique_id}_ui_sensor_action_remove_{sensor_id}"
+        self._attr_unique_id = build_remove_ui_sensor_action_unique_id(
+            coordinator.shell.unique_id, sensor_id
         )
         device_identifier = build_ui_sensor_device_identifier(
             coordinator.shell.unique_id, sensor_id

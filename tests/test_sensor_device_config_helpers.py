@@ -17,15 +17,19 @@ sys.path.insert(
 from sensor_config_helpers import (  # noqa: E402
     build_added_collection_type_sensor_options,
     build_legacy_ui_sensor_unique_id,
+    build_remove_ui_sensor_action_unique_id,
     build_removed_sensor_options,
     build_stable_ui_sensor_unique_id,
     build_sensor_for_collection_type,
+    build_ui_sensor_control_unique_id,
     build_ui_sensor_device_identifier,
     build_ui_sensor_unique_id,
+    configured_sensor_ids,
     configured_collection_types,
     ensure_sensor_ids,
     iter_ui_sensor_unique_id_migrations,
     missing_collection_types,
+    parse_stable_ui_sensor_id,
     remove_sensor_config_by_id,
     replace_sensor_config,
     update_sensor_config_list,
@@ -209,6 +213,15 @@ def test_configured_collection_types_returns_selected_sensor_types():
     assert configured_collection_types(sensors) == {"Bio", "Glass", "Paper"}
 
 
+def test_configured_sensor_ids_returns_stable_sensor_ids():
+    sensors = [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
+        {CONF_NAME: "Legacy"},
+    ]
+
+    assert configured_sensor_ids(sensors) == {"bio-id"}
+
+
 def test_build_ui_sensor_unique_id_uses_stable_id_when_available():
     assert (
         build_ui_sensor_unique_id("source-1", "Bio", "sensor-1")
@@ -227,6 +240,37 @@ def test_build_ui_sensor_device_identifier_uses_stable_sensor_id():
         build_ui_sensor_device_identifier("source-1", "sensor-1")
         == "source-1_sensor_sensor-1"
     )
+
+
+def test_build_ui_sensor_control_unique_id_uses_stable_sensor_id():
+    assert build_ui_sensor_control_unique_id("source-1", "sensor-1", "mode") == (
+        "source-1_ui_sensor_control_sensor-1_mode"
+    )
+
+
+def test_build_remove_ui_sensor_action_unique_id_uses_stable_sensor_id():
+    assert build_remove_ui_sensor_action_unique_id("source-1", "sensor-1") == (
+        "source-1_ui_sensor_action_remove_sensor-1"
+    )
+
+
+def test_parse_stable_ui_sensor_id_supports_sensor_and_control_entities():
+    assert parse_stable_ui_sensor_id(
+        "source-1", "source-1_ui_sensor_sensor-1"
+    ) == "sensor-1"
+    assert parse_stable_ui_sensor_id(
+        "source-1", "source-1_ui_sensor_control_sensor-1_mode"
+    ) == "sensor-1"
+    assert parse_stable_ui_sensor_id(
+        "source-1", "source-1_ui_sensor_action_remove_sensor-1"
+    ) == "sensor-1"
+
+
+def test_parse_stable_ui_sensor_id_ignores_other_unique_ids():
+    assert parse_stable_ui_sensor_id(
+        "source-1", "source-1_ui_sensor_action_create_Bio"
+    ) is None
+    assert parse_stable_ui_sensor_id("source-1", "other_ui_sensor_sensor-1") is None
 
 
 def test_iter_ui_sensor_unique_id_migrations_returns_name_to_id_pairs():
