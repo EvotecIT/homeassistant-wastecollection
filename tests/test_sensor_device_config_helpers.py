@@ -2,19 +2,8 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(
-    0,
-    os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            "..",
-            "custom_components",
-            "waste_collection_schedule",
-        )
-    ),
-)
 
-from sensor_config_helpers import (  # noqa: E402
+from custom_components.waste_collection_schedule.sensor_config_helpers import (  # noqa: E402
     COMBINED_SENSOR_NAME,
     build_added_combined_sensor_options,
     build_added_collection_type_sensor_options,
@@ -34,12 +23,14 @@ from sensor_config_helpers import (  # noqa: E402
     iter_ui_sensor_unique_id_migrations,
     missing_collection_types,
     parse_stable_ui_sensor_id,
+    parse_ui_sensor_device_id,
+    parse_ui_sensor_device_identifier,
     remove_sensor_config_by_id,
     replace_sensor_config,
     update_sensor_config_list,
     update_sensor_config_list_by_id,
 )
-from sensor_template_presets import (  # noqa: E402
+from custom_components.waste_collection_schedule.sensor_template_presets import (  # noqa: E402
     CUSTOM_OPTION,
     DEFAULT_OPTION,
     VALUE_TEMPLATE_PRESETS,
@@ -272,6 +263,31 @@ def test_build_ui_sensor_device_identifier_uses_stable_sensor_id():
     assert (
         build_ui_sensor_device_identifier("source-1", "sensor-1")
         == "source-1_sensor_sensor-1"
+    )
+
+
+def test_parse_ui_sensor_device_identifier_returns_stable_sensor_id():
+    assert (
+        parse_ui_sensor_device_identifier("source-1", "source-1_sensor_sensor-1")
+        == "sensor-1"
+    )
+
+
+def test_parse_ui_sensor_device_identifier_ignores_other_identifiers():
+    assert parse_ui_sensor_device_identifier("source-1", "other_sensor_sensor-1") is None
+    assert parse_ui_sensor_device_identifier("source-1", "source-1") is None
+
+
+def test_parse_ui_sensor_device_id_uses_domain_identifier():
+    assert (
+        parse_ui_sensor_device_id(
+            "source-1",
+            {
+                ("other_domain", "source-1_sensor_sensor-1"),
+                ("waste_collection_schedule", "source-1_sensor_sensor-2"),
+            },
+        )
+        == "sensor-2"
     )
 
 

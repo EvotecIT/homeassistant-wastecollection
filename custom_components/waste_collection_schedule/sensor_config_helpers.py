@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 try:
-    from .const import CONF_SENSOR_ID, CONF_SENSORS
+    from .const import CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
 except ImportError:  # pragma: no cover - fallback for direct test imports
-    from const import CONF_SENSOR_ID, CONF_SENSORS
+    from const import CONF_SENSOR_ID, CONF_SENSORS, DOMAIN
 
 if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
@@ -32,6 +32,29 @@ def build_stable_ui_sensor_unique_id(shell_unique_id: str, sensor_id: str) -> st
 def build_ui_sensor_device_identifier(shell_unique_id: str, sensor_id: str) -> str:
     """Return the stable device identifier for a configured UI sensor."""
     return f"{shell_unique_id}_sensor_{sensor_id}"
+
+
+def parse_ui_sensor_device_identifier(
+    shell_unique_id: str, identifier: str
+) -> str | None:
+    """Extract the stable sensor ID from one of this integration's sensor devices."""
+    prefix = f"{shell_unique_id}_sensor_"
+    if not identifier.startswith(prefix):
+        return None
+    sensor_id = identifier.removeprefix(prefix)
+    return sensor_id or None
+
+
+def parse_ui_sensor_device_id(
+    shell_unique_id: str, identifiers: Iterable[tuple[str, str]]
+) -> str | None:
+    """Extract a stable sensor ID from a Home Assistant device identifier set."""
+    for domain, identifier in identifiers:
+        if domain != DOMAIN:
+            continue
+        if sensor_id := parse_ui_sensor_device_identifier(shell_unique_id, identifier):
+            return sensor_id
+    return None
 
 
 def build_ui_sensor_control_unique_id(

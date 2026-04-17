@@ -14,11 +14,13 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .service import get_fetch_all_service
 from .sensor_config_helpers import (
+    build_removed_sensor_options,
     build_ui_sensor_device_identifier,
     configured_sensor_ids,
     ensure_sensor_ids,
     iter_ui_sensor_unique_id_migrations,
     parse_stable_ui_sensor_id,
+    parse_ui_sensor_device_id,
 )
 from .waste_collection_schedule.service.DeviceKeyStore import (
     initialize_device_key_store,
@@ -242,6 +244,37 @@ async def async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> bool
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: ConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Remove a configured waste pickup sensor through Home Assistant's device UI."""
+    coordinator: WCSCoordinator | None = hass.data.get(const.DOMAIN, {}).get(
+        entry.entry_id
+    )
+    if coordinator is None:
+        return False
+
+    sensor_id = parse_ui_sensor_device_id(
+        coordinator.shell.unique_id, device_entry.identifiers
+    )
+    if sensor_id is None:
+        return False
+
+    if sensor_id not in configured_sensor_ids(entry.options.get(const.CONF_SENSORS, [])):
+        return False
+
+    _LOGGER.debug(
+        "Removing waste pickup sensor %s from device %s",
+        sensor_id,
+        device_entry.id,
+    )
+    hass.config_entries.async_update_entry(
+        entry,
+        options=build_removed_sensor_options(entry, sensor_id),
+    )
+    return True
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
