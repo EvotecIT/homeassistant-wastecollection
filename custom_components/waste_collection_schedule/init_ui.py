@@ -13,7 +13,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .service import get_fetch_all_service
-from .sensor_config_helpers import ensure_sensor_ids
+from .sensor_config_helpers import (
+    ensure_sensor_ids,
+    iter_ui_sensor_unique_id_migrations,
+)
 from .waste_collection_schedule.service.DeviceKeyStore import (
     initialize_device_key_store,
 )
@@ -35,6 +38,43 @@ async def async_remove_legacy_config_entities(
     for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if entity_entry.unique_id and "_ui_sensor_config_" in entity_entry.unique_id:
             registry.async_remove(entity_entry.entity_id)
+
+
+async def async_migrate_ui_sensor_unique_ids(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    shell_unique_id: str,
+    sensors: list[dict[str, Any]],
+) -> None:
+    """Migrate name-based sensor unique IDs to stable sensor-ID based unique IDs."""
+    registry = er.async_get(hass)
+    for old_unique_id, new_unique_id in iter_ui_sensor_unique_id_migrations(
+        shell_unique_id, sensors
+    ):
+        old_entity_id = registry.async_get_entity_id(
+            "sensor", const.DOMAIN, old_unique_id
+        )
+        if old_entity_id is None:
+            continue
+
+        new_entity_id = registry.async_get_entity_id(
+            "sensor", const.DOMAIN, new_unique_id
+        )
+        if new_entity_id is not None:
+            _LOGGER.debug(
+                "Skipping sensor unique ID migration for %s because %s already exists",
+                old_unique_id,
+                new_unique_id,
+            )
+            continue
+
+        _LOGGER.debug(
+            "Migrating sensor entity unique ID for config entry %s: %s -> %s",
+            entry.entry_id,
+            old_unique_id,
+            new_unique_id,
+        )
+        registry.async_update_entity(old_entity_id, new_unique_id=new_unique_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -79,6 +119,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.data[const.CONF_SOURCE_ARGS],
         options.get(const.CONF_SOURCE_CALENDAR_TITLE),
         options.get(const.CONF_DAY_OFFSET, const.CONF_DAY_OFFSET_DEFAULT),
+    )
+
+    await async_migrate_ui_sensor_unique_ids(
+        hass,
+        entry,
+        shell.unique_id,
+        options.get(const.CONF_SENSORS, []),
     )
 
     coordinator = WCSCoordinator(

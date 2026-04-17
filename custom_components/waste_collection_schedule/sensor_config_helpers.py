@@ -18,6 +18,44 @@ if TYPE_CHECKING:
 CONF_NAME = "name"
 
 
+def build_legacy_ui_sensor_unique_id(shell_unique_id: str, sensor_name: str) -> str:
+    """Return the previous name-based UI sensor unique ID."""
+    return f"{shell_unique_id}_ui_sensor_{sensor_name}"
+
+
+def build_stable_ui_sensor_unique_id(shell_unique_id: str, sensor_id: str) -> str:
+    """Return the stable UI sensor unique ID."""
+    return f"{shell_unique_id}_ui_sensor_{sensor_id}"
+
+
+def build_ui_sensor_unique_id(
+    shell_unique_id: str, sensor_name: str, sensor_id: str | None
+) -> str:
+    """Return the preferred UI sensor unique ID, with legacy fallback."""
+    if sensor_id:
+        return build_stable_ui_sensor_unique_id(shell_unique_id, sensor_id)
+    return build_legacy_ui_sensor_unique_id(shell_unique_id, sensor_name)
+
+
+def iter_ui_sensor_unique_id_migrations(
+    shell_unique_id: str, sensors: list[dict[str, Any]]
+) -> list[tuple[str, str]]:
+    """Return legacy-to-stable unique ID migrations for configured sensors."""
+    migrations = []
+    for sensor in sensors:
+        sensor_name = sensor.get(CONF_NAME)
+        sensor_id = sensor.get(CONF_SENSOR_ID)
+        if not sensor_name or not sensor_id:
+            continue
+
+        old_unique_id = build_legacy_ui_sensor_unique_id(shell_unique_id, sensor_name)
+        new_unique_id = build_stable_ui_sensor_unique_id(shell_unique_id, sensor_id)
+        if old_unique_id != new_unique_id:
+            migrations.append((old_unique_id, new_unique_id))
+
+    return migrations
+
+
 def update_sensor_config_list(
     sensors: list[dict[str, Any]],
     sensor_name: str,

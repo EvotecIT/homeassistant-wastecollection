@@ -15,7 +15,11 @@ sys.path.insert(
 )
 
 from sensor_config_helpers import (  # noqa: E402
+    build_legacy_ui_sensor_unique_id,
+    build_stable_ui_sensor_unique_id,
+    build_ui_sensor_unique_id,
     ensure_sensor_ids,
+    iter_ui_sensor_unique_id_migrations,
     replace_sensor_config,
     update_sensor_config_list,
 )
@@ -106,3 +110,31 @@ def test_ensure_sensor_ids_only_fills_missing_ids():
     assert updated[0][CONF_SENSOR_ID] == "generated-id"
     assert updated[1][CONF_SENSOR_ID] == "keep-me"
     assert CONF_SENSOR_ID not in sensors[0]
+
+
+def test_build_ui_sensor_unique_id_uses_stable_id_when_available():
+    assert (
+        build_ui_sensor_unique_id("source-1", "Bio", "sensor-1")
+        == "source-1_ui_sensor_sensor-1"
+    )
+
+
+def test_build_ui_sensor_unique_id_falls_back_to_legacy_name():
+    assert build_ui_sensor_unique_id("source-1", "Bio", None) == (
+        "source-1_ui_sensor_Bio"
+    )
+
+
+def test_iter_ui_sensor_unique_id_migrations_returns_name_to_id_pairs():
+    sensors = [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
+        {CONF_NAME: "Paper"},
+        {CONF_SENSOR_ID: "missing-name"},
+    ]
+
+    assert iter_ui_sensor_unique_id_migrations("source-1", sensors) == [
+        (
+            build_legacy_ui_sensor_unique_id("source-1", "Bio"),
+            build_stable_ui_sensor_unique_id("source-1", "bio-id"),
+        )
+    ]
