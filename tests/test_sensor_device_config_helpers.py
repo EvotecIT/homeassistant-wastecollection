@@ -53,6 +53,13 @@ def test_get_preset_option_returns_matching_label_for_known_template():
     )
 
 
+def test_get_preset_option_returns_matching_label_for_polish_template():
+    assert (
+        get_preset_option("za {{value.daysTo}} dni", VALUE_TEMPLATE_PRESETS)
+        == "za 13 dni"
+    )
+
+
 def test_get_preset_option_returns_custom_for_unknown_template():
     assert get_preset_option("{{value.date}}", VALUE_TEMPLATE_PRESETS) == CUSTOM_OPTION
 

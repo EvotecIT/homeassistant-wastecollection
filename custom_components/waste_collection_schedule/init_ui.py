@@ -41,7 +41,14 @@ async def async_remove_legacy_config_entities(
     """Remove the abandoned per-sensor config entities from the registry."""
     registry = er.async_get(hass)
     for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if entity_entry.unique_id and "_ui_sensor_config_" in entity_entry.unique_id:
+        unique_id = entity_entry.unique_id
+        if not unique_id:
+            continue
+
+        if (
+            "_ui_sensor_config_" in unique_id
+            or "_ui_sensor_action_remove_" in unique_id
+        ):
             registry.async_remove(entity_entry.entity_id)
 
 
