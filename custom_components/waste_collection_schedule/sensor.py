@@ -58,6 +58,20 @@ class DetailsFormat(Enum):
     hidden = "hidden"  # hide details
 
 
+def serialize_collection_group(
+    collection: CollectionGroup, separator: str
+) -> dict[str, Any]:
+    """Return a Home Assistant attribute-friendly pickup summary."""
+    return {
+        "date": collection.date.isoformat(),
+        "daysTo": collection.daysTo,
+        "types": list(collection.types),
+        "type": separator.join(collection.types),
+        "icon": collection.icon,
+        "picture": collection.picture,
+    }
+
+
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_NAME): cv.string,
@@ -118,14 +132,23 @@ def render_sensor_preview(
         sorted(aggregator.types) if collection_types is None else collection_types
     )
 
+    grouped_upcoming = aggregator.get_upcoming_group_by_day(
+        count=count,
+        leadtime=leadtime,
+        include_types=collection_types,
+        include_today=include_today,
+        start_index=event_index,
+    )
+
+    if details_format != DetailsFormat.hidden:
+        attributes["next_pickup"] = serialize_collection_group(collection, separator)
+        attributes["upcoming_pickups"] = [
+            serialize_collection_group(upcoming_collection, separator)
+            for upcoming_collection in grouped_upcoming
+        ]
+
     if details_format == DetailsFormat.upcoming:
-        for upcoming_collection in aggregator.get_upcoming_group_by_day(
-            count=count,
-            leadtime=leadtime,
-            include_types=collection_types,
-            include_today=include_today,
-            start_index=event_index,
-        ):
+        for upcoming_collection in grouped_upcoming:
             attributes[render_date(upcoming_collection)] = separator.join(
                 upcoming_collection.types
             )
