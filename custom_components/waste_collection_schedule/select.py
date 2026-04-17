@@ -18,6 +18,7 @@ from .const import (
     CONF_DETAILS_FORMAT,
     CONF_EVENT_INDEX,
     CONF_LEADTIME,
+    CONF_PRESET_LANGUAGE,
     CONF_SENSOR_ID,
     CONF_SENSORS,
     DOMAIN,
@@ -32,8 +33,12 @@ from .sensor_template_presets import (
     CUSTOM_OPTION,
     DATE_TEMPLATE_PRESETS,
     DEFAULT_OPTION,
-    VALUE_TEMPLATE_PRESETS,
+    PRESET_LANGUAGE_OPTIONS,
+    convert_value_template_language,
+    get_preset_language_label,
+    get_preset_language_value,
     get_preset_option,
+    get_value_template_presets,
 )
 from .wcs_coordinator import WCSCoordinator
 
@@ -92,6 +97,7 @@ async def async_setup_entry(
         entities.extend(
             [
                 WasteSensorLayoutSelect(entry, coordinator, sensor_id, sensor_name),
+                WasteSensorLanguageSelect(entry, coordinator, sensor_id, sensor_name),
                 WasteSensorTemplatePresetSelect(
                     entry,
                     coordinator,
@@ -100,7 +106,6 @@ async def async_setup_entry(
                     key=CONF_VALUE_TEMPLATE,
                     key_suffix="state_preset",
                     label="State text",
-                    presets=VALUE_TEMPLATE_PRESETS,
                     icon="mdi:format-text",
                 ),
                 WasteSensorTemplatePresetSelect(
@@ -111,7 +116,6 @@ async def async_setup_entry(
                     key=CONF_DATE_TEMPLATE,
                     key_suffix="date_preset",
                     label="Date format",
-                    presets=DATE_TEMPLATE_PRESETS,
                     icon="mdi:calendar-text",
                 ),
                 WasteSensorNumberPresetSelect(
@@ -259,6 +263,46 @@ class WasteSensorLayoutSelect(WasteSensorConfigEntity, SelectEntity):
         await self._async_save(updates={CONF_DETAILS_FORMAT: LAYOUT_VALUES[option]})
 
 
+class WasteSensorLanguageSelect(WasteSensorConfigEntity, SelectEntity):
+    """Select for choosing the language used by display presets."""
+
+    _attr_options = list(PRESET_LANGUAGE_OPTIONS.keys())
+
+    def __init__(
+        self,
+        entry: ConfigEntry,
+        coordinator: WCSCoordinator,
+        sensor_id: str,
+        sensor_name: str,
+    ) -> None:
+        super().__init__(
+            entry,
+            coordinator,
+            sensor_id,
+            sensor_name,
+            key_suffix="preset_language",
+            display_name="Display language",
+            icon="mdi:translate",
+        )
+
+    @property
+    def current_option(self) -> str | None:
+        """Return the selected display preset language label."""
+        return get_preset_language_label(self.sensor_config.get(CONF_PRESET_LANGUAGE))
+
+    async def async_select_option(self, option: str) -> None:
+        """Persist the display language and translate known state presets."""
+        language = get_preset_language_value(option)
+        updates = {CONF_PRESET_LANGUAGE: language}
+        converted_template = convert_value_template_language(
+            self.sensor_config.get(CONF_VALUE_TEMPLATE), language
+        )
+        if converted_template is not None:
+            updates[CONF_VALUE_TEMPLATE] = converted_template
+
+        await self._async_save(updates=updates)
+
+
 class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
     """Select for applying a preset template to a waste sensor field."""
 
@@ -271,7 +315,6 @@ class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
         key: str,
         key_suffix: str,
         label: str,
-        presets: dict[str, str],
         icon: str,
         enabled_default: bool = True,
     ) -> None:
@@ -286,13 +329,25 @@ class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
             enabled_default=enabled_default,
         )
         self._key = key
-        self._presets = presets
-        self._attr_options = [DEFAULT_OPTION, *presets.keys(), CUSTOM_OPTION]
+
+    @property
+    def presets(self) -> dict[str, str]:
+        """Return the presets for the current sensor language and field."""
+        if self._key == CONF_VALUE_TEMPLATE:
+            return get_value_template_presets(
+                self.sensor_config.get(CONF_PRESET_LANGUAGE)
+            )
+        return DATE_TEMPLATE_PRESETS
+
+    @property
+    def options(self) -> list[str]:
+        """Return the available preset labels."""
+        return [DEFAULT_OPTION, *self.presets.keys(), CUSTOM_OPTION]
 
     @property
     def current_option(self) -> str | None:
         """Return the current matching preset, default, or custom."""
-        return get_preset_option(self.sensor_config.get(self._key), self._presets)
+        return get_preset_option(self.sensor_config.get(self._key), self.presets)
 
     async def async_select_option(self, option: str) -> None:
         """Apply a preset to the underlying sensor option."""
@@ -301,7 +356,7 @@ class WasteSensorTemplatePresetSelect(WasteSensorConfigEntity, SelectEntity):
         if option == DEFAULT_OPTION:
             await self._async_save(removals=(self._key,))
             return
-        await self._async_save(updates={self._key: self._presets[option]})
+        await self._async_save(updates={self._key: self.presets[option]})
 
 
 class WasteSensorNumberPresetSelect(WasteSensorConfigEntity, SelectEntity):

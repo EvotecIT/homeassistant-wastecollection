@@ -31,10 +31,13 @@ from custom_components.waste_collection_schedule.sensor_config_helpers import ( 
     update_sensor_config_list_by_id,
 )
 from custom_components.waste_collection_schedule.sensor_template_presets import (  # noqa: E402
+    PL_RELATIVE_TEMPLATE,
     CUSTOM_OPTION,
     DEFAULT_OPTION,
     VALUE_TEMPLATE_PRESETS,
+    convert_value_template_language,
     get_preset_option,
+    get_value_template_presets,
 )
 
 CONF_NAME = "name"
@@ -55,8 +58,19 @@ def test_get_preset_option_returns_matching_label_for_known_template():
 
 def test_get_preset_option_returns_matching_label_for_polish_template():
     assert (
-        get_preset_option("za {{value.daysTo}} dni", VALUE_TEMPLATE_PRESETS)
+        get_preset_option("za {{value.daysTo}} dni", get_value_template_presets("pl"))
         == "za 13 dni"
+    )
+
+
+def test_convert_value_template_language_maps_known_preset():
+    assert (
+        convert_value_template_language(
+            "{% if value.daysTo == 0 %}Today{% elif value.daysTo == 1 %}Tomorrow"
+            "{% else %}in {{value.daysTo}} days{% endif %}",
+            "pl",
+        )
+        == PL_RELATIVE_TEMPLATE
     )
 
 

@@ -147,6 +147,7 @@
             "name": "Wyświetlanie",
             "data": {
               "details_format": "Szczegóły w oknie informacji",
+              "preset_language": "Język wyświetlania",
               "value_template_preset": "Styl tekstu stanu",
               "value_template": "Własny szablon stanu",
               "date_template": "Własny szablon daty",
@@ -156,6 +157,7 @@
             },
             "data_description": {
               "details_format": "Wybierz, jak dodatkowe szczegóły odbioru mają wyglądać w oknie informacji.",
+              "preset_language": "Wybierz język gotowych stylów tekstu stanu.",
               "value_template_preset": "Wybierz gotowy styl stanu, np. \"za 13 dni\" albo \"Bio za 13 dni\".",
               "value_template": "Opcjonalny szablon Home Assistant dla stanu sensora. Dostępne wartości to m.in. 'value.date', 'value.daysTo' i 'value.types'.",
               "date_template_preset": "Wybierz gotowy styl daty dla listy nadchodzących odbiorów.",

@@ -6,10 +6,10 @@ try:
     from homeassistant.const import CONF_VALUE_TEMPLATE
 
     from .const import CONF_DATE_TEMPLATE
-    from .sensor_template_presets import DATE_TEMPLATE_PRESETS, VALUE_TEMPLATE_PRESETS
+    from .sensor_template_presets import DATE_TEMPLATE_PRESETS, get_all_value_template_presets
 except ImportError:  # pragma: no cover - fallback for direct test imports
     from const import CONF_DATE_TEMPLATE
-    from sensor_template_presets import DATE_TEMPLATE_PRESETS, VALUE_TEMPLATE_PRESETS
+    from sensor_template_presets import DATE_TEMPLATE_PRESETS, get_all_value_template_presets
 
     CONF_VALUE_TEMPLATE = "value_template"
 
@@ -19,7 +19,7 @@ def apply_template_presets(sensor_input: dict[str, Any]) -> tuple[dict[str, Any]
     errors: dict[str, str] = {}
     args = sensor_input.copy()
     preset_maps = {
-        CONF_VALUE_TEMPLATE: VALUE_TEMPLATE_PRESETS,
+        CONF_VALUE_TEMPLATE: get_all_value_template_presets(),
         CONF_DATE_TEMPLATE: DATE_TEMPLATE_PRESETS,
     }
 

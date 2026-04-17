@@ -165,6 +165,7 @@
             "name": "Display",
             "data": {
               "details_format": "Details in more-info",
+              "preset_language": "Display language",
               "value_template_preset": "State text style",
               "value_template": "Custom state template",
               "date_template": "Custom date template",
@@ -174,6 +175,7 @@
             },
             "data_description": {
               "details_format": "Choose how extra collection details should appear in the more-info dialog.",
+              "preset_language": "Choose which language should be used for ready-made state text presets.",
               "value_template_preset": "Pick a ready-made state style such as 'in 13 days' or 'Bio in 13 days'.",
               "value_template": "Optional Home Assistant template for the sensor state. Available values include 'value.date', 'value.daysTo', and 'value.types'.",
               "date_template_preset": "Pick a ready-made date style for the upcoming list.",

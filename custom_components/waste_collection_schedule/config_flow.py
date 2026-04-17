@@ -67,6 +67,7 @@ from .const import (
     CONF_ICON,
     CONF_LEADTIME,
     CONF_PICTURE,
+    CONF_PRESET_LANGUAGE,
     CONF_RANDOM_FETCH_TIME_OFFSET,
     CONF_RANDOM_FETCH_TIME_OFFSET_DEFAULT,
     CONF_SENSORS,
@@ -92,8 +93,12 @@ from .sensor_config_helpers import (
 )
 from .sensor_template_presets import (
     DATE_TEMPLATE_PRESETS,
-    VALUE_TEMPLATE_PRESETS,
+    DEFAULT_PRESET_LANGUAGE,
+    PRESET_LANGUAGE_OPTIONS,
+    convert_value_template_language,
     get_preset_option,
+    get_value_template_presets,
+    infer_preset_language_from_template,
 )
 from .waste_collection_schedule import CollectionAggregator, Customize, SourceShell
 from .waste_collection_schedule.type_aliases import (
@@ -333,8 +338,21 @@ def get_customize_schema(defaults: dict[str, Any] = {}, add_delete: bool = False
 def _sensor_defaults(defaults: dict[str, Any]) -> dict[str, Any]:
     """Add derived UI defaults for sensor preset selectors."""
     derived_defaults = defaults.copy()
+    language = derived_defaults.get(CONF_PRESET_LANGUAGE)
+    if not language:
+        language = infer_preset_language_from_template(
+            derived_defaults.get(CONF_VALUE_TEMPLATE)
+        )
+        derived_defaults[CONF_PRESET_LANGUAGE] = language
+
+    converted_template = convert_value_template_language(
+        derived_defaults.get(CONF_VALUE_TEMPLATE), language
+    )
+    if converted_template is not None:
+        derived_defaults[CONF_VALUE_TEMPLATE] = converted_template
+
     derived_defaults[CONF_VALUE_TEMPLATE + "_preset"] = get_preset_option(
-        defaults.get(CONF_VALUE_TEMPLATE), VALUE_TEMPLATE_PRESETS
+        derived_defaults.get(CONF_VALUE_TEMPLATE), get_value_template_presets(language)
     )
     derived_defaults[CONF_DATE_TEMPLATE + "_preset"] = get_preset_option(
         defaults.get(CONF_DATE_TEMPLATE), DATE_TEMPLATE_PRESETS
@@ -368,7 +386,14 @@ def _should_refresh_sensor_form(
     derived_defaults = _sensor_defaults(defaults or {})
     current_show_advanced = _show_advanced_sensor_fields(derived_defaults)
     requested_show_advanced = user_input.get(CONF_ADVANCED_MODE, current_show_advanced)
-    return bool(requested_show_advanced) != current_show_advanced
+    if bool(requested_show_advanced) != current_show_advanced:
+        return True
+
+    current_language = derived_defaults.get(
+        CONF_PRESET_LANGUAGE, DEFAULT_PRESET_LANGUAGE
+    )
+    requested_language = user_input.get(CONF_PRESET_LANGUAGE, current_language)
+    return requested_language != current_language
 
 
 def get_detected_types_schema(fetched_types: list[str]) -> vol.Schema:
@@ -422,6 +447,9 @@ def get_sensor_schema(
 ):
     defaults = _sensor_defaults(defaults or {})
     show_advanced = _show_advanced_sensor_fields(defaults)
+    value_template_presets = get_value_template_presets(
+        defaults.get(CONF_PRESET_LANGUAGE)
+    )
     display_fields: dict[Any, Any] = {
         vol.Optional(
             CONF_DETAILS_FORMAT,
@@ -439,6 +467,20 @@ def get_sensor_schema(
             )
         ),
         vol.Optional(
+            CONF_PRESET_LANGUAGE,
+            default=defaults.get(CONF_PRESET_LANGUAGE, DEFAULT_PRESET_LANGUAGE),
+        ): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    SelectOptionDict(label=label, value=value)
+                    for label, value in PRESET_LANGUAGE_OPTIONS.items()
+                ],
+                mode=SelectSelectorMode.DROPDOWN,
+                custom_value=False,
+                multiple=False,
+            )
+        ),
+        vol.Optional(
             CONF_VALUE_TEMPLATE + "_preset",
             default=defaults.get(CONF_VALUE_TEMPLATE + "_preset", "Default"),
         ): SelectSelector(
@@ -447,7 +489,7 @@ def get_sensor_schema(
                     SelectOptionDict(label="Use built-in default", value="Default"),
                     *[
                         SelectOptionDict(label=label, value=label)
-                        for label in VALUE_TEMPLATE_PRESETS
+                        for label in value_template_presets
                     ],
                     SelectOptionDict(label="Write my own template", value="Custom"),
                 ],
