@@ -15,12 +15,18 @@ sys.path.insert(
 )
 
 from sensor_config_helpers import (  # noqa: E402
+    build_added_collection_type_sensor_options,
     build_legacy_ui_sensor_unique_id,
+    build_removed_sensor_options,
     build_stable_ui_sensor_unique_id,
+    build_sensor_for_collection_type,
     build_ui_sensor_device_identifier,
     build_ui_sensor_unique_id,
+    configured_collection_types,
     ensure_sensor_ids,
     iter_ui_sensor_unique_id_migrations,
+    missing_collection_types,
+    remove_sensor_config_by_id,
     replace_sensor_config,
     update_sensor_config_list,
     update_sensor_config_list_by_id,
@@ -98,6 +104,18 @@ def test_update_sensor_config_list_by_id_updates_only_matching_sensor():
     assert CONF_VALUE_TEMPLATE not in sensors[1]
 
 
+def test_remove_sensor_config_by_id_removes_only_matching_sensor():
+    sensors = [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
+        {CONF_NAME: "Paper", CONF_SENSOR_ID: "paper-id"},
+    ]
+
+    updated = remove_sensor_config_by_id(sensors, "bio-id")
+
+    assert updated == [{CONF_NAME: "Paper", CONF_SENSOR_ID: "paper-id"}]
+    assert len(sensors) == 2
+
+
 def test_replace_sensor_config_replaces_only_target_sensor():
     sensors = [
         {CONF_NAME: "Bio", CONF_VALUE_TEMPLATE: "old"},
@@ -129,6 +147,66 @@ def test_ensure_sensor_ids_only_fills_missing_ids():
     assert updated[0][CONF_SENSOR_ID] == "generated-id"
     assert updated[1][CONF_SENSOR_ID] == "keep-me"
     assert CONF_SENSOR_ID not in sensors[0]
+
+
+def test_missing_collection_types_ignores_types_already_covered_by_sensors():
+    sensors = [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id", "types": ["Bio"]},
+        {CONF_NAME: "All", CONF_SENSOR_ID: "all-id"},
+    ]
+
+    assert missing_collection_types({"Bio", "Paper", "Glass"}, sensors) == [
+        "Glass",
+        "Paper",
+    ]
+
+
+def test_build_sensor_for_collection_type_creates_default_per_type_sensor():
+    sensor = build_sensor_for_collection_type("Bio", id_factory=lambda: "bio-id")
+
+    assert sensor == {
+        CONF_NAME: "Bio",
+        CONF_SENSOR_ID: "bio-id",
+        "types": ["Bio"],
+    }
+
+
+def test_build_removed_sensor_options_removes_sensor_from_entry_options():
+    class Entry:
+        options = {
+            "sensors": [
+                {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
+                {CONF_NAME: "Paper", CONF_SENSOR_ID: "paper-id"},
+            ]
+        }
+
+    options = build_removed_sensor_options(Entry(), "paper-id")
+
+    assert options["sensors"] == [{CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"}]
+
+
+def test_build_added_collection_type_sensor_options_appends_new_sensor():
+    class Entry:
+        options = {"sensors": [{CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"}]}
+
+    options = build_added_collection_type_sensor_options(
+        Entry(), "Paper", id_factory=lambda: "paper-id"
+    )
+
+    assert options["sensors"] == [
+        {CONF_NAME: "Bio", CONF_SENSOR_ID: "bio-id"},
+        {CONF_NAME: "Paper", CONF_SENSOR_ID: "paper-id", "types": ["Paper"]},
+    ]
+
+
+def test_configured_collection_types_returns_selected_sensor_types():
+    sensors = [
+        {CONF_NAME: "Bio", "types": ["Bio"]},
+        {CONF_NAME: "Mixed", "types": ["Paper", "Glass"]},
+        {CONF_NAME: "Everything"},
+    ]
+
+    assert configured_collection_types(sensors) == {"Bio", "Glass", "Paper"}
 
 
 def test_build_ui_sensor_unique_id_uses_stable_id_when_available():

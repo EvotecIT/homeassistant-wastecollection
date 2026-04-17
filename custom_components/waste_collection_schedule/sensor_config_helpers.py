@@ -107,6 +107,18 @@ def update_sensor_config_list_by_id(
     raise KeyError(f"Sensor ID '{sensor_id}' not found")
 
 
+def remove_sensor_config_by_id(
+    sensors: list[dict[str, Any]],
+    sensor_id: str,
+) -> list[dict[str, Any]]:
+    """Return a new sensor list without the sensor matching the stable ID."""
+    return [
+        deepcopy(sensor)
+        for sensor in sensors
+        if sensor.get(CONF_SENSOR_ID) != sensor_id
+    ]
+
+
 def ensure_sensor_ids(
     sensors: list[dict[str, Any]],
     id_factory: Callable[[], str] | None = None,
@@ -123,6 +135,37 @@ def ensure_sensor_ids(
         changed = True
 
     return updated_sensors, changed
+
+
+def configured_collection_types(sensors: list[dict[str, Any]]) -> set[str]:
+    """Return collection types already covered by configured sensors."""
+    types: set[str] = set()
+    for sensor in sensors:
+        sensor_types = sensor.get("types")
+        if not sensor_types:
+            continue
+        types.update(str(sensor_type) for sensor_type in sensor_types)
+    return types
+
+
+def missing_collection_types(
+    available_types: set[str], sensors: list[dict[str, Any]]
+) -> list[str]:
+    """Return available collection types not already covered by a sensor."""
+    return sorted(available_types - configured_collection_types(sensors))
+
+
+def build_sensor_for_collection_type(
+    collection_type: str,
+    id_factory: Callable[[], str] | None = None,
+) -> dict[str, Any]:
+    """Build a default per-type waste pickup sensor configuration."""
+    factory = id_factory or (lambda: uuid4().hex)
+    return {
+        CONF_NAME: collection_type,
+        CONF_SENSOR_ID: factory(),
+        "types": [collection_type],
+    }
 
 
 def replace_sensor_config(
@@ -188,4 +231,26 @@ def build_replaced_sensor_options(
         original_sensor_name=original_sensor_name,
         replacement=replacement,
     )
+    return options
+
+
+def build_removed_sensor_options(entry: ConfigEntry, sensor_id: str) -> dict[str, Any]:
+    """Build a new config entry options payload without one stable sensor."""
+    options = deepcopy(dict(entry.options))
+    options[CONF_SENSORS] = remove_sensor_config_by_id(
+        options.get(CONF_SENSORS, []), sensor_id=sensor_id
+    )
+    return options
+
+
+def build_added_collection_type_sensor_options(
+    entry: ConfigEntry,
+    collection_type: str,
+    id_factory: Callable[[], str] | None = None,
+) -> dict[str, Any]:
+    """Build a new config entry options payload with one per-type sensor added."""
+    options = deepcopy(dict(entry.options))
+    sensors = deepcopy(options.get(CONF_SENSORS, []))
+    sensors.append(build_sensor_for_collection_type(collection_type, id_factory))
+    options[CONF_SENSORS] = sensors
     return options
