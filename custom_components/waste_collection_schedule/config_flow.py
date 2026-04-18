@@ -3,6 +3,7 @@ import inspect
 import json
 import logging
 import types
+from copy import deepcopy
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Literal, Tuple, TypedDict, Union, cast, get_origin
@@ -15,7 +16,6 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlow,
 )
-from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import section
 from homeassistant.helpers.selector import (
