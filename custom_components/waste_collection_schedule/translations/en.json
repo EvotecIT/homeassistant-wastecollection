@@ -25,12 +25,10 @@
         "title": "Select Configuration Details",
         "description": "Select How detailed you want to configure this integration. Leave empty if you only want to configure a basic calendar.",
         "data": {
-          "show_customize_config": "Show Collection Event Customize Configurations",
-          "show_sensor_config": "Show Sensor Configurations"
+          "show_customize_config": "Show Collection Event Customize Configurations"
         },
         "data_description": {
-          "show_customize_config": "Select this if you want to customize the collection types.",
-          "show_sensor_config": "Select this if you want to configure sensors."
+          "show_customize_config": "Select this if you want to customize the collection types."
         }
       },
       "detected_types": {
@@ -51,20 +49,17 @@
           "advanced": {
             "name": "Advanced Setup",
             "data": {
-              "customize_collection_types": "Rename, hide, or restyle collection types now",
-              "open_advanced_sensor_editor": "Open the legacy advanced sensor editor after this"
+              "customize_collection_types": "Rename, hide, or restyle collection types now"
             },
             "data_description": {
-              "customize_collection_types": "Use this if the source returned long or unfriendly waste type names.",
-              "open_advanced_sensor_editor": "Most users should leave this off. Sensor display can be edited later from each sensor device page."
+              "customize_collection_types": "Use this if the source returned long or unfriendly waste type names."
             }
           }
         },
         "data": {
           "create_sensors_for_types": "Create sensors for",
           "create_combined_sensor": "Create combined next pickup sensor",
-          "customize_collection_types": "Rename, hide, or restyle collection types now",
-          "open_advanced_sensor_editor": "Open the legacy advanced sensor editor after this"
+          "customize_collection_types": "Rename, hide, or restyle collection types now"
         }
       },
       "customize_select": {
@@ -24171,19 +24166,16 @@
             }
           },
           "manage": {
-            "name": "Legacy Advanced Editors",
+            "name": "Collection Type Customization",
             "data": {
-              "sensor_select": "Bulk-edit existing sensors",
               "customize_select": "Edit collection type aliases"
             },
             "data_description": {
-              "sensor_select": "Optional fallback for advanced sensor settings. Creating and deleting waste sensors is now easier from the device pages.",
               "customize_select": "Optional fallback for aliases, icons, hidden waste types, and dedicated calendars."
             }
           }
         },
         "data": {
-          "sensor_select": "Bulk-edit existing sensors",
           "customize_select": "Edit collection type aliases",
           "calendar_title": "Calendar Title",
           "separator": "Separator",
@@ -24193,7 +24185,6 @@
           "day_offset": "Day Offset"
         },
         "data_description": {
-          "sensor_select": "Optional fallback for advanced sensor settings. Creating and deleting waste sensors is now easier from the device pages.",
           "customize_select": "Optional fallback for aliases, icons, hidden waste types, and dedicated calendars.",
           "calendar_title": "A more readable, or user-friendly, name for the waste calendar. If nothing is provided, the name returned by the source will be used.",
           "separator": "Used to join entries if the multiple values for a single day are returned by the source.",
@@ -24379,11 +24370,6 @@
         "monthly": "Monthly",
         "weekly": "Weekly",
         "daily": "Daily"
-      }
-    },
-    "sensor_select": {
-      "options": {
-        "sensor_select_add_new": "Add new sensor"
       }
     }
   },

@@ -25,12 +25,10 @@
         "title": "Wybierz szczegóły konfiguracji",
         "description": "Wybierz, jak szczegółowo chcesz skonfigurować integrację. Zostaw puste, jeśli potrzebujesz tylko podstawowego kalendarza.",
         "data": {
-          "show_customize_config": "Pokaż konfigurację typów odbioru",
-          "show_sensor_config": "Pokaż konfigurację sensorów"
+          "show_customize_config": "Pokaż konfigurację typów odbioru"
         },
         "data_description": {
-          "show_customize_config": "Wybierz, jeśli chcesz zmienić nazwy, ikony lub widoczność typów odbioru.",
-          "show_sensor_config": "Wybierz, jeśli chcesz ręcznie skonfigurować sensory."
+          "show_customize_config": "Wybierz, jeśli chcesz zmienić nazwy, ikony lub widoczność typów odbioru."
         }
       },
       "detected_types": {
@@ -51,20 +49,17 @@
           "advanced": {
             "name": "Konfiguracja zaawansowana",
             "data": {
-              "customize_collection_types": "Zmień nazwy, ukryj lub ustaw wygląd typów odbioru teraz",
-              "open_advanced_sensor_editor": "Otwórz stary zaawansowany edytor sensorów po tym kroku"
+              "customize_collection_types": "Zmień nazwy, ukryj lub ustaw wygląd typów odbioru teraz"
             },
             "data_description": {
-              "customize_collection_types": "Użyj, jeśli źródło zwróciło długie lub mało czytelne nazwy odpadów.",
-              "open_advanced_sensor_editor": "Większość użytkowników powinna zostawić tę opcję wyłączoną. Wygląd sensora można później zmienić na stronie jego urządzenia."
+              "customize_collection_types": "Użyj, jeśli źródło zwróciło długie lub mało czytelne nazwy odpadów."
             }
           }
         },
         "data": {
           "create_sensors_for_types": "Utwórz sensory dla",
           "create_combined_sensor": "Utwórz łączony sensor najbliższego odbioru",
-          "customize_collection_types": "Zmień nazwy, ukryj lub ustaw wygląd typów odbioru teraz",
-          "open_advanced_sensor_editor": "Otwórz stary zaawansowany edytor sensorów po tym kroku"
+          "customize_collection_types": "Zmień nazwy, ukryj lub ustaw wygląd typów odbioru teraz"
         }
       },
       "customize_select": {
@@ -224,11 +219,6 @@
         "appointment_types": "Według typu odbioru",
         "generic": "Wszystkie atrybuty",
         "hidden": "Ukryte"
-      }
-    },
-    "sensor_select": {
-      "options": {
-        "sensor_select_add_new": "Dodaj nowy sensor"
       }
     }
   },

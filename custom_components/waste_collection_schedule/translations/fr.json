@@ -25,12 +25,10 @@
         "title": "Sélectionner les Détails de la Configuration",
         "description": "Choisissez le niveau de détail souhaité pour cette intégration. Laissez vide si vous souhaitez simplement configurer un calendrier de base.",
         "data": {
-          "show_customize_config": "Afficher les Configurations Personnalisées des Événements de Collecte",
-          "show_sensor_config": "Afficher les Configurations des Capteurs"
+          "show_customize_config": "Afficher les Configurations Personnalisées des Événements de Collecte"
         },
         "data_description": {
-          "show_customize_config": "Sélectionnez ceci si vous souhaitez personnaliser les types de collecte.",
-          "show_sensor_config": "Sélectionnez ceci si vous souhaitez configurer des capteurs."
+          "show_customize_config": "Sélectionnez ceci si vous souhaitez personnaliser les types de collecte."
         }
       },
       "customize_select": {

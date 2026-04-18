@@ -25,12 +25,10 @@
         "title": "Konfigurations-detailgrad auswählen",
         "description": "Wähle den Detailgrad der Konfiguration aus. Leer lassen, für einen Einfachen Kalender ohne Anpassungen und Sensoren.",
         "data": {
-          "show_customize_config": "Mülltyp Anpassungsmenü Anzeigen",
-          "show_sensor_config": "Sensor Konfiguration Anzeigen"
+          "show_customize_config": "Mülltyp Anpassungsmenü Anzeigen"
         },
         "data_description": {
-          "show_customize_config": "Wähle dies, wenn du Mülltypen anpassen möchtest.",
-          "show_sensor_config": "Wähle dies, wenn du Sensoren konfigurieren möchtest."
+          "show_customize_config": "Wähle dies, wenn du Mülltypen anpassen möchtest."
         }
       },
       "customize_select": {
@@ -23574,7 +23572,6 @@
       "init": {
         "description": "Waste Collection Schedule Details aktualisieren.",
         "data": {
-          "sensor_select": "Sensoren zum Ändern",
           "customize_select": "Zu Bearbeitende Anpassungen",
           "separator": "Trenner",
           "fetch_time": "Abrufzeit",
@@ -23583,7 +23580,6 @@
           "day_offset": "Tagesoffset"
         },
         "data_description": {
-          "sensor_select": "Wähle den Sensor aus, den du ändern möchtest. (wähle 'Neuen Sensor hinzufügen', um einen neuen Sensor zu erstellen)",
           "customize_select": "Wähle die Anpassung aus, die du ändern möchtest. (oder wähle eine neue Anpassung, um eine neue zu erstellen)",
           "calendar_title": "Ein lesbarerer oder benutzerfreundlicherer Name für den Müllkalender. Wenn nichts angegeben wird, wird der Name der Quelle verwendet.",
           "seperator": "Wird verwendet, um Einträge aneinander zu hängen, wenn die Quelle mehrere Werte für einen Tag zurückgibt.",
@@ -23672,11 +23668,6 @@
         "monthly": "Monatlich",
         "weekly": "Wöchentlich",
         "daily": "Täglich"
-      }
-    },
-    "sensor_select": {
-      "options": {
-        "sensor_select_add_new": "Neuen Sensor hinzufügen"
       }
     }
   },
