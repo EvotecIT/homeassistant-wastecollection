@@ -144,12 +144,13 @@ class WCSCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return
 
         if self.shell:
-            await self._hass.async_add_executor_job(self.shell.fetch)
-            self._last_fetch_date = today
+            fetch_succeeded = await self._hass.async_add_executor_job(self.shell.fetch)
+            if fetch_succeeded:
+                self._last_fetch_date = today
 
-            # Save device keys to storage after fetch
-            device_store = get_device_key_store()
-            if device_store:
-                await device_store.async_save()
+                # Save device keys to storage after fetch
+                device_store = get_device_key_store()
+                if device_store:
+                    await device_store.async_save()
 
         await self._update_sensors_callback()
