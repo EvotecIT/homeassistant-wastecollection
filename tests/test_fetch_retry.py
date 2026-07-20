@@ -3,7 +3,9 @@ import os
 import sys
 from datetime import date
 from typing import Any, cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 sys.path.append(
     os.path.join(
@@ -93,6 +95,25 @@ def test_coordinator_allows_same_day_retry_after_failed_fetch() -> None:
 
     assert fetch_count == 2
     assert last_fetch_date is not None
+
+
+def test_coordinator_first_refresh_reports_failed_fetch() -> None:
+    from custom_components.waste_collection_schedule import wcs_coordinator
+
+    coordinator = object.__new__(wcs_coordinator.WCSCoordinator)
+    coordinator._shell = cast(Any, type("Shell", (), {"title": "Test source"})())
+
+    async def _run() -> None:
+        with (
+            patch.object(coordinator, "_fetch_now", AsyncMock(return_value=False)),
+            pytest.raises(
+                wcs_coordinator.UpdateFailed,
+                match="Unable to fetch waste collection data from Test source",
+            ),
+        ):
+            await coordinator._async_update_data()
+
+    asyncio.run(_run())
 
 
 def test_yaml_api_retries_all_sources_after_partial_failure() -> None:
