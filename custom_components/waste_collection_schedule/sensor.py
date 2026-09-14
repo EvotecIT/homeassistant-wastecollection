@@ -423,6 +423,7 @@ class ScheduleSensor(SensorEntity):
         """Return separator string used to join waste types."""
         if self._api:
             return self._api.separator
+        assert self._coordinator is not None
         return self._coordinator.separator
 
     @property
@@ -430,6 +431,7 @@ class ScheduleSensor(SensorEntity):
         """Return true if collections for today shall be included in the results."""
         if self._api:
             return dt_util.now().time() < self._api._day_switch_time
+        assert self._coordinator is not None
         return dt_util.now().time() < self._coordinator.day_switch_time
 
     def _add_refreshtime(self):
@@ -447,6 +449,11 @@ class ScheduleSensor(SensorEntity):
         """
         if self._aggregator is None:
             return
+        if self._api is not None:
+            day_switch_time = self._api._day_switch_time
+        else:
+            assert self._coordinator is not None
+            day_switch_time = self._coordinator.day_switch_time
         (
             self._value,
             self._attr_extra_state_attributes,
@@ -455,11 +462,7 @@ class ScheduleSensor(SensorEntity):
         ) = render_sensor_preview(
             aggregator=self._aggregator,
             separator=self._separator,
-            day_switch_time=(
-                self._api._day_switch_time
-                if self._api
-                else self._coordinator.day_switch_time
-            ),
+            day_switch_time=day_switch_time,
             details_format=self._details_format,
             count=self._count,
             leadtime=self._leadtime,
