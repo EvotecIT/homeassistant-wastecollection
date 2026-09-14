@@ -1,6 +1,6 @@
 """Provider colors survive mapping, customization and HA serialization."""
 
-import calendar  # noqa: F401
+import calendar  # noqa: F401 - import stdlib calendar before the package path
 import json
 import sys
 from datetime import date
@@ -132,6 +132,7 @@ def test_provider_can_supply_a_local_color_mapping():
 
 
 def test_yaml_color_validation_normalizes_and_rejects_invalid_overrides():
+    import homeassistant  # noqa: F401
     import voluptuous as vol
 
     from custom_components.waste_collection_schedule.init_yaml import CUSTOMIZE_CONFIG
