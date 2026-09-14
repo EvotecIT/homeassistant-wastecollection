@@ -149,9 +149,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Unload a config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        coordinator = hass.data.get(const.DOMAIN, {}).pop(entry.entry_id, None)
-        if isinstance(coordinator, WCSCoordinator):
-            coordinator.cancel_scheduled_callbacks()
+        hass.data.get(const.DOMAIN, {}).pop(entry.entry_id, None)
     return unloaded
 
 
