@@ -78,6 +78,7 @@ def test_ui_template_has_all_common_keys_and_matching_placeholders(lang):
         (root / f"translation_templates/{lang}.json").read_text(encoding="utf-8")
     )
     # The generator supplies common sensor strings after loading each seed.
+    apply_sensor_translations(english, "en")
     apply_sensor_translations(translated, lang)
     english["config"]["step"] = {
         key: value
