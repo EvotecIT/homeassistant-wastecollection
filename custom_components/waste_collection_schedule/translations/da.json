@@ -36457,7 +36457,6 @@
   "issues": {
     "legacy_sensors": {
       "title": "Sensorer fra tidligere omdøbninger",
-      "description": "Disse gamle sensorer har ingen gemt konfiguration: {entities}. Kontrollér automatiseringer og dashboards før fjernelse.",
       "fix_flow": {
         "step": {
           "confirm": {

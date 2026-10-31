@@ -36457,7 +36457,6 @@
   "issues": {
     "legacy_sensors": {
       "title": "Sensorer från tidigare namnbyten",
-      "description": "Dessa gamla sensorer saknar sparad konfiguration: {entities}. Kontrollera automationer och instrumentpaneler före borttagning.",
       "fix_flow": {
         "step": {
           "confirm": {

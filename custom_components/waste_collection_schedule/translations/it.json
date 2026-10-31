@@ -36456,7 +36456,6 @@
   "issues": {
     "legacy_sensors": {
       "title": "Sensori rimasti da precedenti rinomine",
-      "description": "Questi vecchi sensori non hanno una configurazione salvata: {entities}. Controlla automazioni e dashboard prima di rimuoverli.",
       "fix_flow": {
         "step": {
           "confirm": {

@@ -36453,7 +36453,6 @@
   "issues": {
     "legacy_sensors": {
       "title": "Aiemmista uudelleennimeämisistä jääneet anturit",
-      "description": "Näillä vanhoilla antureilla ei ole tallennettua kokoonpanoa: {entities}. Tarkista automaatiot ja kojelaudat ennen poistamista.",
       "fix_flow": {
         "step": {
           "confirm": {

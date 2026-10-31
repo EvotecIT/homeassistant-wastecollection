@@ -36449,7 +36449,6 @@
   "issues": {
     "legacy_sensors": {
       "title": "Senzorji iz prejšnjih preimenovanj",
-      "description": "Ti stari senzorji nimajo shranjene konfiguracije: {entities}. Pred odstranitvijo preverite avtomatizacije in nadzorne plošče.",
       "fix_flow": {
         "step": {
           "confirm": {

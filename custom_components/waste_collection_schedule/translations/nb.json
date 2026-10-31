@@ -36457,7 +36457,6 @@
   "issues": {
     "legacy_sensors": {
       "title": "Sensorer fra tidligere navneendringer",
-      "description": "Disse gamle sensorene har ingen lagret konfigurasjon: {entities}. Kontroller automatiseringer og oversikter før fjerning.",
       "fix_flow": {
         "step": {
           "confirm": {

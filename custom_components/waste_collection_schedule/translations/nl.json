@@ -36457,7 +36457,6 @@
   "issues": {
     "legacy_sensors": {
       "title": "Sensoren van eerdere naamswijzigingen",
-      "description": "Deze oude sensoren hebben geen opgeslagen configuratie: {entities}. Controleer automatiseringen en dashboards voordat u ze verwijdert.",
       "fix_flow": {
         "step": {
           "confirm": {
