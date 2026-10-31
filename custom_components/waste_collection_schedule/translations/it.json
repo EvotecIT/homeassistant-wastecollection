@@ -36460,7 +36460,7 @@
         "step": {
           "confirm": {
             "title": "Rimuovi vecchie voci dei sensori",
-            "description": "Rimuovere le vecchie voci di registro elencate? I sensori migrati attivi vengono conservati."
+            "description": "Questi vecchi sensori non hanno una configurazione salvata: {entities}. Controlla automazioni e dashboard prima di rimuoverli.\n\nRimuovere le vecchie voci di registro elencate? I sensori migrati attivi vengono conservati."
           }
         }
       }

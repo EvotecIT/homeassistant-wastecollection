@@ -36541,7 +36541,7 @@
         "step": {
           "confirm": {
             "title": "Remove legacy sensor entries",
-            "description": "Remove the listed legacy registry entries? Active migrated sensors are retained."
+            "description": "These legacy sensors have no saved configuration: {entities}. Check automations and dashboards before removing them.\n\nRemove the listed legacy registry entries? Active migrated sensors are retained."
           }
         }
       }

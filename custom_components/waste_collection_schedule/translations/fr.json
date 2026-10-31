@@ -36386,7 +36386,7 @@
         "step": {
           "confirm": {
             "title": "Supprimer les anciennes entrées de capteur",
-            "description": "Supprimer les anciennes entrées de registre indiquées ? Les capteurs actifs migrés sont conservés."
+            "description": "Ces anciens capteurs n’ont aucune configuration enregistrée : {entities}. Vérifiez les automatisations et tableaux de bord avant de les supprimer.\n\nSupprimer les anciennes entrées de registre indiquées ? Les capteurs actifs migrés sont conservés."
           }
         }
       }

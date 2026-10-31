@@ -36453,7 +36453,7 @@
         "step": {
           "confirm": {
             "title": "Odstrani stare vnose senzorjev",
-            "description": "Odstranim navedene stare vnose registra? Aktivni preseljeni senzorji ostanejo."
+            "description": "Ti stari senzorji nimajo shranjene konfiguracije: {entities}. Pred odstranitvijo preverite avtomatizacije in nadzorne plošče.\n\nOdstranim navedene stare vnose registra? Aktivni preseljeni senzorji ostanejo."
           }
         }
       }
