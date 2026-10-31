@@ -427,7 +427,10 @@ def test_generated_common_translations_cover_project_language_contract():
         assert "pl" not in content["selector"]["language"]["options"]
         assert content["entity"]["button"]["create_sensor"]["name"].count("{name}") == 1
         assert (
-            content["issues"]["legacy_sensors"]["description"].count("{entities}") == 1
+            content["issues"]["legacy_sensors"]["fix_flow"]["step"]["confirm"][
+                "description"
+            ].count("{entities}")
+            == 1
         )
         assert content["exceptions"]["type_unavailable"]["message"]
         json.dumps(content)
