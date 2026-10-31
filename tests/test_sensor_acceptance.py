@@ -347,6 +347,7 @@ async def test_migration_collision_requires_confirmation_before_removing_legacy(
         {"issue_id": "legacy_sensors_" + entry.entry_id}
     )
     assert prompt["type"] == "form"
+    assert prompt["description_placeholders"] == {"entities": legacy.entity_id}
     assert registry.async_get(legacy.entity_id) is not None
     result = await repair.async_step_confirm({})
     assert result["type"] == "create_entry"

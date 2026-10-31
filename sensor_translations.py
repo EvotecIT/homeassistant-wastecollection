@@ -384,7 +384,9 @@ def apply_sensor_translations(translations, language):
             "step": {
                 "confirm": {
                     "title": ui["confirm_title"],
-                    "description": ui["confirm_description"],
+                    "description": ui["repair_description"]
+                    + "\n\n"
+                    + ui["confirm_description"],
                 }
             }
         },
