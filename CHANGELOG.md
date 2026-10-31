@@ -8,8 +8,7 @@ Releases are listed in reverse chronological order.
 
 ### Changed
 
-- Dedicated calendars retain their category or provider-bin membership when types share a display alias. The general calendar keeps non-dedicated collections; saved keys and calendar identities remain unchanged.
-
+- Dedicated calendars retain their category or provider-bin membership when types share a display alias, including description keys and trimmed legacy labels. The general calendar keeps non-dedicated collections and remains available when only part of the dedicated schedule is present; saved keys and calendar identities remain unchanged.
 - UI sensors use stable internal IDs, retain entity IDs and history through edits, and can be disabled without deleting their configuration. Configure separates source settings, sensors, and waste-type customization.
 - Built-in state/date formats support English, German, French, Italian, Dutch, Slovenian, Danish, Finnish, Swedish, and Norwegian Bokmål without writing templates. YAML supports the same formatting and filtering options, optional `unique_id`, and `kind: days_to` / `last_update`.
 - Optional native device pages edit the same sensor records. Sensor-only changes do not fetch the provider again. **Next collection** remains the combined overview sensor.
@@ -145,6 +144,7 @@ This is a pre-release (beta) that migrates 12 more legacy sources to the BaseSou
 A warm welcome and huge thank-you to our **first-time contributors** in this release:
 @BjornWill, @halfbuilthq, @JakobVinje, @Krohler06, @skruje and @stickx. 🎉
 Thanks as well to our returning contributors (@bbr111, @developerjillur, @jan-tdy) for the fixes, sources and migrations below.
+- The `fetch_data` action skips disabled integration entries. Provider fetches taking longer than two minutes log a warning; later requests for that source continue waiting for the running fetch to finish.
 
 ### Deprecated
 
@@ -220,6 +220,7 @@ This is a pre-release (beta) that adds about 190 more legacy sources migrated to
 A warm welcome and huge thank-you to our **first-time contributors** in this release:
 @alaneurich, @barrelcollector, @chmsant, @developerjillur, @fanfounet, @kamaradclimber, @MissStabby, @oneandonlydean, @rbiddulph and @tkgalk. 🎉
 Thanks as well to our returning contributors (@AtomBrake, @bbr111, @dmkjr, @shaguarger, @superrob) for the fixes, sources and migrations below.
+- The `fetch_data` action skips disabled integration entries. Provider fetches taking longer than two minutes log a warning; later requests for that source continue waiting for the running fetch to finish.
 
 ### Deprecated
 
@@ -791,6 +792,7 @@ A warm welcome and huge thank-you to our **first-time contributors** in this rel
 @rbusquet and @SA7BNT. 🎉
 Thanks as well to our returning contributors (@amildenhall, @anuj-dangi, @bbr111,
 @danielcolquitt, @marsdeat, @Zaunei) for the fixes and new sources below.
+- The `fetch_data` action skips disabled integration entries. Provider fetches taking longer than two minutes log a warning; later requests for that source continue waiting for the running fetch to finish.
 
 ### Deprecated
 
@@ -949,6 +951,7 @@ for the fixes and new sources below.
 - fixed bracknell_forest_gov_uk: handle null firstDate (thanks @jan-tdy) (#6571)
 - fixed bedford_gov_uk: update data parsing (thanks @jan-tdy) (#6566)
 - fixed darlington_gov_uk: improve parsing (thanks @Brookterrace) (#6584)
+- The `fetch_data` action skips disabled integration entries. Provider fetches taking longer than two minutes log a warning; later requests for that source continue waiting for the running fetch to finish.
 
 ### Deprecated
 
